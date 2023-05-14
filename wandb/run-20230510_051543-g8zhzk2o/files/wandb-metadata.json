@@ -1,0 +1,85 @@
+{
+    "os": "Linux-5.15.90.1-microsoft-standard-WSL2-x86_64-with-glibc2.35",
+    "python": "3.10.10",
+    "heartbeatAt": "2023-05-09T20:15:45.153402",
+    "startedAt": "2023-05-09T20:15:43.295895",
+    "docker": null,
+    "cuda": null,
+    "args": [],
+    "state": "running",
+    "program": "/home/barrow/RecommendationAPI/GHRS_test.py",
+    "codePath": "GHRS_test.py",
+    "git": {
+        "remote": "https://github.com/CE-Capstone/RecommendationAPI.git",
+        "commit": "86971f1982be27264d8bf1c403eb14bbbc4efb0e"
+    },
+    "email": "barrow13512@gmail.com",
+    "root": "/home/barrow/RecommendationAPI",
+    "host": "LAPTOP-DU1PNMP9",
+    "username": "barrow",
+    "executable": "/home/barrow/miniconda3/envs/ce-capstone/bin/python",
+    "cpu_count": 4,
+    "cpu_count_logical": 8,
+    "cpu_freq": {
+        "current": 2807.999,
+        "min": 0.0,
+        "max": 0.0
+    },
+    "cpu_freq_per_core": [
+        {
+            "current": 2807.999,
+            "min": 0.0,
+            "max": 0.0
+        },
+        {
+            "current": 2807.999,
+            "min": 0.0,
+            "max": 0.0
+        },
+        {
+            "current": 2807.999,
+            "min": 0.0,
+            "max": 0.0
+        },
+        {
+            "current": 2807.999,
+            "min": 0.0,
+            "max": 0.0
+        },
+        {
+            "current": 2807.999,
+            "min": 0.0,
+            "max": 0.0
+        },
+        {
+            "current": 2807.999,
+            "min": 0.0,
+            "max": 0.0
+        },
+        {
+            "current": 2807.999,
+            "min": 0.0,
+            "max": 0.0
+        },
+        {
+            "current": 2807.999,
+            "min": 0.0,
+            "max": 0.0
+        }
+    ],
+    "disk": {
+        "total": 1006.853931427002,
+        "used": 54.12918472290039
+    },
+    "gpu": "NVIDIA GeForce GTX 1060",
+    "gpu_count": 1,
+    "gpu_devices": [
+        {
+            "name": "NVIDIA GeForce GTX 1060",
+            "memory_total": 6442450944
+        }
+    ],
+    "memory": {
+        "total": 7.71673583984375
+    }
+}

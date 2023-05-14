@@ -1,0 +1,19 @@
+matplotlib
+numpy
+pandas
+scipy
+requests
+scikit-learn
+tqdm
+pytorch-lightning>=2
+wandb
+pickle
+dotenv
+dotenv
+mysql-connector-python
+
+# networkx
+# graphtools # Installation instruction https://git.skewed.de/count0/graph-tool/-/wikis/installation-instructions#windows
+# igraph
+# RAPIDS
+# cudf

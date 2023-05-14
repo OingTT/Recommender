@@ -1,2 +1,2 @@
-# Recommender
-OingTT Recommendation system
+# RecommendationAPI
+Recommendation system api server
