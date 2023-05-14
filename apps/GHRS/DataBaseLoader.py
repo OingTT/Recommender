@@ -1,6 +1,8 @@
 import os
 import mysql.connector
 
+from dotenv import load_dotenv
+
 from __cert__ import __cert__
 
 class DataBaseLoader():
@@ -16,10 +18,11 @@ class DataBaseLoader():
     if self.__instance__ is not None:
       raise Exception("Singleton class, use get_instance() method instead")
     else:
-      self.HOST = __cert__.get('WHATSUBS_HOST')
-      self.USERNAME = __cert__.get('WHATSUBS_USERNAME')
-      self.PASSWORD = __cert__.get('WHATSUBS_PASSWORD')
-      self.DATABASE = __cert__.get('WHATSUBS_DATABASE')
+      load_dotenv()
+      self.HOST = os.getenv("WHATSUBS_DB_HOST")
+      self.USERNAME = os.getenv("WHATSUBS_DB_USERNAME")
+      self.PASSWORD = os.getenv("WHATSUBS_DB_PASSWORD")
+      self.DATABASE = os.getenv("WHATSUBS_DB_DATABASE")
       self.connection = None
       self.cursor = None
 

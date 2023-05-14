@@ -9,7 +9,6 @@ pytorch-lightning>=2
 wandb
 pickle
 dotenv
-dotenv
 mysql-connector-python
 
 # networkx
