@@ -25,9 +25,10 @@ def TimeTaken(func):
 class GraphFeature(metaclass=ABCMeta):
   preprocessed_data_dir = './preprocessed_data'
 
-  def __init__(self, ratings_df: pd.DataFrame, users_df: pd.DataFrame):
+  def __init__(self, ratings_df: pd.DataFrame, users_df: pd.DataFrame, is_pred: bool=True):
     self.ratings = ratings_df
     self.users_df = users_df
+    self.is_pred = is_pred
 
   def __call__(self, alpha_coef: float=0.005) -> pd.DataFrame:
     graphFeature_df_path = os.path.join(self.preprocessed_data_dir, 'graphFeature.pkl')
@@ -44,18 +45,15 @@ class GraphFeature(metaclass=ABCMeta):
     self._addGraphEdges()
 
   def _extendPairs(self):
-    # 이유는 모르겠으나 pickle로 저장된 pairs를 불러오면 종료됨
-    # + 논문 github에 있는 코드를 그대로 사용하면 메모리 문제 발생해 수정
     # self.pairs = load_pickle('./pairs.pkl')
-    
     self.pairs = False
-    if not self.pairs:
+    if not self.pairs and self.is_pred:
       self.pairs = list()
-      print(self.ratings)
       grouped = self.ratings.groupby(['MID', 'Rating'])
       for key, group in tqdm(grouped, desc='_getGraph::extend'):
         for comb in itertools.combinations(group['UID'], 2):
           self.pairs.extend(list(comb))
+      print(self.pairs[:10])
       # save_pickle(self.pairs, './pairs.pkl')
 
   def _getEdgeList(self, alpha_coef):
@@ -64,7 +62,7 @@ class GraphFeature(metaclass=ABCMeta):
     ### About 3~4 minute at aplha = 0.005 * 3883
     edge_list_path = os.path.join(self.preprocessed_data_dir, 'edge_list_{:.3f}.pkl'.format(alpha))
     self.edge_list = load_pickle(edge_list_path)
-    if not self.edge_list:
+    if not self.edge_list and self.is_pred:
       self.edge_list = map(list, collections.Counter(el for el in tqdm(counter.elements(), desc='_getGraph::map', total=132483307) if counter[el] >= alpha).keys())
       save_pickle(self.edge_list, edge_list_path)
 

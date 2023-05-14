@@ -1,18 +1,18 @@
+import os
 import requests
-import io
-import sys
 
-from PIL import Image
+from dotenv import load_dotenv
+from typing import Union
 
 from ..utils.utils import _binary2image
 
 class TMDB:
   BASE_URL = 'https://api.themoviedb.org/3/'
   CONTENT_URL = 'https://api.themoviedb.org/3/{content_type}/{content_id}'
-  API_KEY = '97428814ca8fb39cccbd6572794cda30'
 
   def __init__(self):
-    pass
+    load_dotenv()
+    self.API_KEY = os.getenv('TMDB_API_KEY')
 
   def _get_content_url(self, content_id: str, content_type: str='movie', path: str=''):
     return self.CONTENT_URL.format(content_type=content_type, content_id=content_id) + path
@@ -27,10 +27,10 @@ class TMDB:
 
     return response
 
-  def get_imdb_id(self, content_id: str, content_type: str='movie') -> str:
+  def get_imdb_id(self, content_id: str, content_type: str='movie') -> Union[str, None]:
     url = self._get_content_url(content_id, content_type, '/external_ids')
-    response = self._request_query(url)
-    return response.json()['imdb_id']
+    response_json: dict = self._request_query(url).json()
+    return response_json.get('imdb_id', None)
 
   def search_movie(self,
                   query: str,

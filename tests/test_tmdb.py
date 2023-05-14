@@ -1,5 +1,5 @@
 import unittest
-from apps.apis.tmdb import TMDB
+from apps.apis.TMDB import TMDB
 from PIL import JpegImagePlugin
 
 class Test_TMDB(unittest.TestCase):

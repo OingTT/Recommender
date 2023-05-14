@@ -6,7 +6,7 @@ import pytorch_lightning as pl
 from pytorch_lightning.loggers import TensorBoardLogger, CSVLogger, WandbLogger
 
 from .Cluster.Cluster import Cluster
-from .GHRS_Dataset import GHRS_Dataset
+from .GHRSDataset import GHRS_Dataset
 from .AutoEncoder.AutoEncoder import AutoEncoder
 
 
@@ -36,7 +36,6 @@ class GHRS:
     '''
     this function assume that autoencoder is already trained
     '''
-    self.ghrsDataset
     self.trainer.predict(self.autoEncoder, self.ghrsDataset)
     
   def __getLoggers(self, ):

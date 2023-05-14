@@ -5,31 +5,40 @@ import numpy as np
 import pandas as pd
 import pytorch_lightning as pl
 
+from typing import Tuple
 from sklearn.preprocessing import LabelEncoder, OneHotEncoder
-from pytorch_lightning.utilities.types import TRAIN_DATALOADERS
 from torch.utils.data import TensorDataset, DataLoader, random_split
 
 from .Const import OCCUPATION_MAP
 from .DataBaseLoader import DataBaseLoader
-from .GraphFeature.GraphFeature_GraphTool import GraphFeature_GraphTool
+from .GraphFeature.GraphFeature_GraphTool import GraphFeature_GraphTool as GraphFeature
 
 class GHRS_Dataset(pl.LightningDataModule):
-  def __init__(self, movieLensDir: str = './ml-1m', DataBaseLoader: DataBaseLoader=None, batch_size: int = 64, num_workers: int = 0, val_rate: float=0.2) -> None:
+  def __init__(
+      self,
+      movieLensDir: str = './ml-1m',
+      DataBaseLoader: DataBaseLoader=None,
+      batch_size: int = 64,
+      num_workers: int = 0,
+      val_rate: float=0.2,
+      is_pred: bool=False,
+    ) -> None:
     super(GHRS_Dataset, self).__init__()
     self.movieLensDir = movieLensDir
     self.batch_size = batch_size
     self.num_workers = num_workers
     self.val_rate = val_rate
     self.dataBaseLoader = DataBaseLoader
+    self.is_pred = is_pred
     self._prepare_data()
 
   def __len__(self):
     '''
-    Return dim of datasets feature
+    Return dim of datasets 'feature'
     '''
     return len(self.GraphFeature_df.loc[:, ~self.GraphFeature_df.columns.isin(['Rating', 'UID', 'MID'])].columns)
 
-  def __convert2Categorical(self, df_X: pd.DataFrame, _X: str):
+  def __convert2Categorical(self, df_X: pd.DataFrame, _X: str) -> pd.DataFrame:
     values = np.array(df_X[_X])
     # Encode to integer
     labelEncoder = LabelEncoder()
@@ -43,7 +52,7 @@ class GHRS_Dataset(pl.LightningDataModule):
       df_X.insert(loc=j + 1, column=str(_X) + str(j + 1), value=onehot_encoded[:, j])
     return df_X
 
-  def __preprocess(self):
+  def __preprocess(self) -> None:
     self.Users_df = self.__convert2Categorical(self.Users_df, 'Occupation')
     self.Users_df = self.__convert2Categorical(self.Users_df, 'Gender')
     # 연령대 수정
@@ -58,7 +67,7 @@ class GHRS_Dataset(pl.LightningDataModule):
     return
   
   def _prepare_data(self) -> None:
-    self.Ratings_df = pd.read_csv(
+    ratings_df = pd.read_csv(
       os.path.join(self.movieLensDir, 'ratings.dat'),
       sep='\::',
       engine='python',
@@ -70,26 +79,31 @@ class GHRS_Dataset(pl.LightningDataModule):
         'Timestamp': 'uint64'
       }
     )
-    self.Users_df = pd.read_csv(
+    users_df = pd.read_csv(
       os.path.join(self.movieLensDir, 'users.dat'),
       sep='\::',
       engine='python',
       names=['UID', 'Gender', 'Age', 'Occupation', 'Zip'],
       dtype={
-        'UId': 'uint16',
+        'UID': 'uint16',
         'Gender': 'str',
         'Age': 'uint8',
         'Occupation': 'uint8',
         'Zip': 'string'
       }
     )
+    
+    self._prepare_pred_data(ratings_df=ratings_df, users_df=users_df)
+
+    self.Ratings_df = ratings_df
+    self.Users_df = users_df
     for occupation in OCCUPATION_MAP.items():
       self.Users_df['Occupation'] = self.Users_df['Occupation'].replace(occupation[1], occupation[0])
 
     self.__preprocess()
 
-    self.GraphFeature = GraphFeature_GraphTool(self.Ratings_df, self.Users_df)
-    self.GraphFeature_df: pd.DataFrame = self.GraphFeature()
+    self.GraphFeature = GraphFeature(self.Ratings_df, self.Users_df)
+    self.GraphFeature_df = self.GraphFeature()
 
     self.whole_data = torch.Tensor(
       self.GraphFeature_df.loc[:, ~self.GraphFeature_df.columns.isin(['Rating', 'UID', 'MID'])].values
@@ -98,6 +112,22 @@ class GHRS_Dataset(pl.LightningDataModule):
     self.whole_dataset = TensorDataset(self.whole_data)
 
     self.train_set, self.valid_set = random_split(self.whole_dataset, [(1 - self.val_rate), self.val_rate])
+  
+  def _prepare_pred_data(self, ratings_df: pd.DataFrame=None, users_df: pd.DataFrame=None) -> Tuple[pd.DataFrame, pd.DataFrame]:
+    '''
+    Movie Lens Dataset을 사용하는 이유가 Cold start problem 해결하기 위함이므로
+    데이터가 충분히 많은 경우에는 Movie Lens Dataset을 사용하지 않고
+    DataBaseLoader만을 사용해 데이터를 불러올 예정.
+    '''
+    assert self.dataBaseLoader is not None, 'dataBaseLoader must be set'
+    assert self.Users_df is not None, 'Users_df must be set'
+    assert self.Ratings_df is not None, 'Ratings_df must be set'
+    
+    db_ratings = self.dataBaseLoader.getReviews()
+    ratings_df = pd.concat([ratings_df, db_ratings])
+    db_users = self.dataBaseLoader.getUsers()
+    ratings_df = pd.concat([ratings_df, db_users])
+    return ratings_df, users_df
 
   def train_dataloader(self):
     return DataLoader(self.train_set, batch_size=self.batch_size, num_workers=self.num_workers, shuffle=True)
@@ -105,3 +135,5 @@ class GHRS_Dataset(pl.LightningDataModule):
   def val_dataloader(self):
     return DataLoader(self.valid_set, batch_size=self.batch_size, num_workers=self.num_workers, shuffle=False)
   
+  def predict_dataloader(self):
+    return DataLoader(self.whole_dataset, batch_size=self.batch_size, num_workers=self.num_workers, shuffle=False)
