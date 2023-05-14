@@ -3,8 +3,6 @@ import mysql.connector
 
 from dotenv import load_dotenv
 
-from __cert__ import __cert__
-
 class DataBaseLoader():
   __instance__ = None
 
