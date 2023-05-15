@@ -50,7 +50,8 @@ class AutoEncoder(pl.LightningModule):
     @torch.no_grad()
     def getLatnetVector(self, x: torch.Tensor) -> torch.Tensor:
       self.Encoder.eval()
-      return self.Encoder(x)
+      latent_vec = self.Encoder(x)
+      return dict(input=x, latent_vec=latent_vec)
     
     def forward(self, x: torch.Tensor) -> Tuple[torch.Tensor, torch.Tensor]:
       encoded = self.Encoder(x)

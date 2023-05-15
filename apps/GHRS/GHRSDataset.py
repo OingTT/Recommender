@@ -14,6 +14,12 @@ from .DataBaseLoader import DataBaseLoader
 from .GraphFeature.GraphFeature_GraphTool import GraphFeature_GraphTool as GraphFeature
 
 class GHRS_Dataset(pl.LightningDataModule):
+  '''
+  TODO Latent Vector만들고 UID랑 합쳐야 함 => 어떤 유저에 대한 Latent Vector인지 알아야 하기 떄문
+  현재 생각으로는 Input data에 UID를 포함해서 Autoencoder에 입력 후 Autoencoder에서 UID를 제외하는 방법으로 구현
+  Input data는 TensorDataset으로 들어가니 0번째 feature에 UID를 넣어서 Autoencoder에 입력 후
+  0번째 index feature를 제외하고 Latent Vector를 추출 후 UID와 합치는 방법으로 구현
+  '''
   def __init__(
       self,
       movieLensDir: str = './ml-1m',
