@@ -70,7 +70,7 @@ class GHRS_Dataset(pl.LightningDataModule):
     self.Users_df = self.Users_df.drop(columns='bin')
     self.Users_df = self.__convert2Categorical(self.Users_df, 'Age')
     self.Users_df = self.Users_df.drop(columns='Zip')
-    return
+    return None
   
   def _prepare_data(self) -> None:
     ratings_df = pd.read_csv(
@@ -110,10 +110,22 @@ class GHRS_Dataset(pl.LightningDataModule):
 
     self.GraphFeature = GraphFeature(self.Ratings_df, self.Users_df)
     self.GraphFeature_df = self.GraphFeature()
+    
+    except_uid = self.GraphFeature_df.loc[:, ~self.GraphFeature_df.columns.isin(['Rating', 'UID', 'MID'])].values
+    contain_uid = pd.concat([self.GraphFeature_df['UID'], except_uid], axis=1).values
 
-    self.whole_data = torch.Tensor(
-      self.GraphFeature_df.loc[:, ~self.GraphFeature_df.columns.isin(['Rating', 'UID', 'MID'])].values
-    )
+    columns = contain_uid.columns.tolist()
+    uid_idx = 0
+    for idx, column in enumerate(columns):
+      if column == 'UID':
+        uid_idx = idx
+        break
+    columns = columns[uid_idx: ] + columns[: uid_idx]
+    contain_uid = contain_uid[columns]
+    
+    print(contain_uid)
+
+    self.whole_data = torch.Tensor(contain_uid)
     
     self.whole_dataset = TensorDataset(self.whole_data)
 
@@ -143,3 +155,6 @@ class GHRS_Dataset(pl.LightningDataModule):
   
   def predict_dataloader(self):
     return DataLoader(self.whole_dataset, batch_size=self.batch_size, num_workers=self.num_workers, shuffle=False)
+  
+g = GHRS_Dataset()
+g.prepare_data()

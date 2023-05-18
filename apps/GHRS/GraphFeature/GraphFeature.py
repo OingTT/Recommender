@@ -1,6 +1,5 @@
 import os
 
-import pickle
 import itertools
 import collections
 

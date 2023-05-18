@@ -1,9 +1,11 @@
-import datetime
+import os
 import wandb
+import datetime
 
 import pytorch_lightning as pl
 
 from pytorch_lightning.loggers import TensorBoardLogger, CSVLogger, WandbLogger
+from pytorch_lightning.callbacks import ModelCheckpoint
 
 from .Cluster.Cluster import Cluster
 from .GHRSDataset import GHRS_Dataset
@@ -14,28 +16,55 @@ class GHRS:
   def __init__(
       self,
       datasetDir: str = './ml-1m',
-      train_AE: bool=True,
-      latent_dim: int=8,
-      batch_size: int=1024,
-      num_workers: int=8,
-      val_rate: float=0.2,
+      CFG: dict = None
+      # train_AE: bool=True,
+      # latent_dim: int=8,
+      # batch_size: int=1024,
+      # num_workers: int=8,
+      # val_rate: float=0.2,
     ):
     self.datasetDir = datasetDir
-    self.train_AE = train_AE
-    self.latent_dim = latent_dim
-    self.batch_size = batch_size
-    self.num_workers = num_workers
-    self.val_rate = val_rate
+    self.train_AE = CFG['train_ae']
+    self.latent_dim = CFG['latent_dim']
+    self.batch_size = CFG['batch_size']
+    self.num_workers = CFG['num_workers']
+    self.val_rate = CFG['val_rate']
+    self.accelerator = CFG['device']
+    self.max_epoch = CFG['max_epoch']
+    modelCheckpoint = ModelCheckpoint(
+      save_top_k=10,
+      monitor="val_loss",
+      mode="min",
+      dirpath="./PretrainedModel",
+      filename="Pretrained-{epoch:02d}-{val_loss:.2f}",
+    )
     self.trainer = pl.Trainer(
-      accelerator='gpu',
-      max_epochs=100,
+      accelerator=self.accelerator,
+      max_epochs=self.max_epoch,
       logger=self.__getLoggers(),
+      callbacks=[modelCheckpoint],
+      default_root_dir="./PretrainedModel",
     )
 
   def __call__(self, ):
     '''
     this function assume that autoencoder is already trained
     '''
+    chkps = dict()
+    for chkp in os.listdir():
+      if not chkp.startswith('Pretrained-epoch'):
+        continue
+      splited = chkp.split('-')
+      epoch = int(splited[1])
+      loss = float(splited[2])
+      chkps.update({epoch: loss})
+    min_loss = min(chkps.values())
+    min_epoch = [epoch for epoch, loss in chkps.items() if loss == min_loss][0]
+    best_model = f'Pretrained-{min_epoch}-{min_loss:.2f}.ckpt'
+
+    self.autoEncoder = AutoEncoder.load_from_checkpoint(
+      checkpoint_path=best_model,
+    )
     self.trainer.predict(self.autoEncoder, self.ghrsDataset)
     
   def __getLoggers(self, ):

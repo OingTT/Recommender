@@ -3,6 +3,7 @@ import mysql.connector
 
 import pandas as pd
 
+from apps.apis.TMDB import TMDB
 from datetime import datetime
 from dotenv import load_dotenv
 
@@ -26,6 +27,7 @@ class DataBaseLoader():
       self.DATABASE = os.getenv("WHATSUBS_DB_DATABASE")
       self.connection = None
       self.cursor = None
+      self.TMDB_API = TMDB()
 
   def __connect(self, ) -> None:
     self.connection = mysql.connector.connect(
@@ -43,10 +45,12 @@ class DataBaseLoader():
     if self.connection is not None and self.connection.is_connected():
       self.connection.close()
 
-  def __execute(self, query: str):
+  def __execute(self, query: str, *args: tuple) -> list:
     if self.connection is None or self.connection.is_connected() is False:
       self.__connect()
-    self.cursor.execute(query)
+    if len(args) == 1:
+      args = (args[0], )
+    self.cursor.execute(query, args)
     return self.cursor.fetchall()
   
   def __getAge(self, birthday: datetime) -> int:
@@ -57,12 +61,6 @@ class DataBaseLoader():
     return today.year - birthday.year - ((today.month, today.day) < (birthday.month, birthday.day))
   
   def getReviews(self, ) -> pd.DataFrame:
-    '''
-    TODO 
-    Movie Lens는 IMDB ID를 줌
-    그러나 WhatSubs는 TMDB ID를 줌
-    따라서, TMDB ID를 IMDB ID로 변환하는 작업이 필요함
-    '''
     query = 'SELECT * FROM Review'
     response = self.__execute(query)
     reviews = list()
@@ -82,9 +80,10 @@ class DataBaseLoader():
         영화에 대한 Review만 추출
         '''
         MID = CONTENT_ID
+        IMDB_MID = self.TMDB_API.get_imdb_id(str(MID), 'movie')
         reviews.append({
           'UID': UID,
-          'MID': MID,
+          'MID': IMDB_MID,
           'Rating': RATING,
           'Timestamp': None,
         })
@@ -99,7 +98,7 @@ class DataBaseLoader():
       UID = row[0]
       NAME = row[1]
       EMAIL = row[2]
-      EMAIL_VERIFIED = row[3] # 뭔지 모르겠음
+      EMAIL_VERIFIED = row[3]
       PROFILE_IMAGE = row[4]
       PROFILE_AVATAR = row[5]
       BIRTHDAY = row[6]
@@ -115,10 +114,49 @@ class DataBaseLoader():
       })
     return pd.DataFrame().from_records(users)
   
-  def ___(self, ):
-    return self.__execute('show columns from Review')
+  def findUserByUserId(self, uid: str) -> dict:
+    return self.__execute('SELECT * FROM User WHERE id=%s;', uid)
   
-from pprint import pprint
+  def findUserByUserName(self, name: str) -> dict:
+    return self.__execute('SELECT * FROM User WHERE name=%s;', name)
+  
+  def findUserByUserEmail(self, email: str) -> dict:
+    return self.__execute('SELECT * FROM User WHERE email=%s;', email)
 
-dbLoader = DataBaseLoader.getInstance()
-pprint(dbLoader.___())
+  def findReviesByUserId(self, uid: str) -> list:
+    return self.__execute('SELECT * FROM Review WHERE userId=%s;', uid)
+  
+  def _test(self, args):
+    print(self.__execute(*args))
+
+
+# def len_reviews_by_name(dbLoader: DataBaseLoader, userName):
+#   cnt = 0
+#   user = dbLoader.findUserByUserName(userName)
+#   uid = user[0][0]
+#   reviews = dbLoader.findReviesByUserId(uid)
+#   for row in reviews:
+#     if row[3] != 'WATCHED':
+#       continue
+#     cnt += 1
+#   print(f'{userName}: {cnt}')
+# def len_reviews_by_email(dbLoader: DataBaseLoader, userEmail):
+#   cnt = 0
+#   user = dbLoader.findUserByUserEmail(userEmail)
+#   userName = user[0][1]
+#   uid = user[0][0]
+#   reviews = dbLoader.findReviesByUserId(uid)
+#   for row in reviews:
+#     if row[3] != 'WATCHED':
+#       continue
+#     cnt += 1
+#   print(f'{userName}: {cnt}')
+
+
+# dbLoader = DataBaseLoader()
+# len_reviews_by_name(dbLoader, '박준서')
+# len_reviews_by_name(dbLoader, 'dong')
+# len_reviews_by_name(dbLoader, '이정준')
+# len_reviews_by_name(dbLoader, '김종인')
+# len_reviews_by_email(dbLoader, 'dalek76@naver.com')
+# len_reviews_by_name(dbLoader, '은댕')

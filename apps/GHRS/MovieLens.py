@@ -84,6 +84,3 @@ class MovieLens(object):
       'Occupation': 'uint8',
       'ZIP-Code': 'string'
     })
-
-m = MovieLens('ml-1m')
-m._loadUserDemographicInfo()

@@ -49,6 +49,10 @@ class AutoEncoder(pl.LightningModule):
     
     @torch.no_grad()
     def getLatnetVector(self, x: torch.Tensor) -> torch.Tensor:
+      '''
+      TODO Input data 에서의 UID와 Latent Vector를 맵핑하여 반환하도록 구현
+      -> Tuple[UID, Latent Vector]
+      '''
       self.Encoder.eval()
       latent_vec = self.Encoder(x)
       return dict(input=x, latent_vec=latent_vec)
