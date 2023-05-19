@@ -9,11 +9,12 @@ from typing import Tuple
 from sklearn.preprocessing import LabelEncoder, OneHotEncoder
 from torch.utils.data import TensorDataset, DataLoader, random_split
 
+from apps.apis.TMDB import TMDB
 from .Const import OCCUPATION_MAP
 from .DataBaseLoader import DataBaseLoader
 from .GraphFeature.GraphFeature_GraphTool import GraphFeature_GraphTool as GraphFeature
 
-class GHRS_Dataset(pl.LightningDataModule):
+class GHRSDataset(pl.LightningDataModule):
   '''
   TODO Latent Vector만들고 UID랑 합쳐야 함 => 어떤 유저에 대한 Latent Vector인지 알아야 하기 떄문
   현재 생각으로는 Input data에 UID를 포함해서 Autoencoder에 입력 후 Autoencoder에서 UID를 제외하는 방법으로 구현
@@ -29,13 +30,14 @@ class GHRS_Dataset(pl.LightningDataModule):
       val_rate: float=0.2,
       is_pred: bool=False,
     ) -> None:
-    super(GHRS_Dataset, self).__init__()
+    super(GHRSDataset, self).__init__()
     self.movieLensDir = movieLensDir
     self.batch_size = batch_size
     self.num_workers = num_workers
     self.val_rate = val_rate
     self.dataBaseLoader = DataBaseLoader
     self.is_pred = is_pred
+    self.tmdb_api = TMDB()
     self._prepare_data()
 
   def __len__(self):
@@ -98,6 +100,9 @@ class GHRS_Dataset(pl.LightningDataModule):
         'Zip': 'string'
       }
     )
+
+    # TMDB id To IMDB id
+    ratings_df['MID'] = self.tmdb_api.get_tmdb_id(ratings_df['MID'].values)
     
     self._prepare_pred_data(ratings_df=ratings_df, users_df=users_df)
 
@@ -122,7 +127,7 @@ class GHRS_Dataset(pl.LightningDataModule):
         break
     columns = columns[uid_idx: ] + columns[: uid_idx]
     contain_uid = contain_uid[columns]
-    
+
     print(contain_uid)
 
     self.whole_data = torch.Tensor(contain_uid)
@@ -156,5 +161,5 @@ class GHRS_Dataset(pl.LightningDataModule):
   def predict_dataloader(self):
     return DataLoader(self.whole_dataset, batch_size=self.batch_size, num_workers=self.num_workers, shuffle=False)
   
-g = GHRS_Dataset()
+g = GHRSDataset()
 g.prepare_data()

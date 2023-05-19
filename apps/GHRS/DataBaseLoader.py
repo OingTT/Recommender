@@ -80,10 +80,9 @@ class DataBaseLoader():
         영화에 대한 Review만 추출
         '''
         MID = CONTENT_ID
-        IMDB_MID = self.TMDB_API.get_imdb_id(str(MID), 'movie')
         reviews.append({
           'UID': UID,
-          'MID': IMDB_MID,
+          'MID': MID,
           'Rating': RATING,
           'Timestamp': None,
         })

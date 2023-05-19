@@ -8,21 +8,21 @@ from pytorch_lightning.loggers import TensorBoardLogger, CSVLogger, WandbLogger
 from pytorch_lightning.callbacks import ModelCheckpoint
 
 from .Cluster.Cluster import Cluster
-from .GHRSDataset import GHRS_Dataset
+from .GHRSDataset import GHRSDataset
 from .AutoEncoder.AutoEncoder import AutoEncoder
 
+from apps.GHRS.DataBaseLoader import DataBaseLoader
 
 class GHRS:
   def __init__(
       self,
       datasetDir: str = './ml-1m',
       CFG: dict = None
-      # train_AE: bool=True,
-      # latent_dim: int=8,
-      # batch_size: int=1024,
-      # num_workers: int=8,
-      # val_rate: float=0.2,
     ):
+    '''
+    TODO TMDB ID로 변경해서 보내야함
+    https://github.com/OingTT/Recommender.git
+    '''
     self.datasetDir = datasetDir
     self.train_AE = CFG['train_ae']
     self.latent_dim = CFG['latent_dim']
@@ -37,6 +37,13 @@ class GHRS:
       mode="min",
       dirpath="./PretrainedModel",
       filename="Pretrained-{epoch:02d}-{val_loss:.2f}",
+    )
+    self.ghrsDataset = GHRSDataset(
+      self.datasetDir,
+      DataBaseLoader=DataBaseLoader(),
+      batch_size=self.batch_size,
+      num_workers=self.num_workers,
+      val_rate=self.val_rate
     )
     self.trainer = pl.Trainer(
       accelerator=self.accelerator,
@@ -86,16 +93,15 @@ class GHRS:
     return [tb_logger, csv_logger, wandb_logger]
 
   def trainAutoEncoder(self):
-    self.ghrsDataset = GHRS_Dataset(self.datasetDir, batch_size=self.batch_size, num_workers=self.num_workers, val_rate=self.val_rate)
     self.autoEncoder = AutoEncoder(len(self.ghrsDataset), self.latent_dim)
     self.trainer.fit(
       self.autoEncoder,
       datamodule=self.ghrsDataset,
     )
     
-  def predictAutoencoder(self, ):
+  def predictAutoencoder(self):
     return self.trainer.predict(self.autoEncoder, self.ghrsDataset)
   
-  def cluster(self, ):
+  def cluster(self):
     self.cluster = Cluster(self.graphFeatureDF)
     return self.cluster()

@@ -4,7 +4,7 @@ import requests
 from dotenv import load_dotenv
 from typing import Union
 
-from ..utils.utils import _binary2image
+from apps.utils.utils import _binary2image
 
 class TMDB:
   BASE_URL = 'https://api.themoviedb.org/3/'
@@ -28,9 +28,23 @@ class TMDB:
     return response
 
   def get_imdb_id(self, content_id: str, content_type: str='movie') -> Union[str, None]:
+    '''
+    Get IMDB ID from TMDB ID
+    '''
     url = self._get_content_url(content_id, content_type, '/external_ids')
     response_json: dict = self._request_query(url).json()
     return response_json.get('imdb_id', None)
+  
+  def get_tmdb_id(self, imdb_id: str, content_type: str='movie'):
+    '''
+    Get TMDB ID from IMDB ID
+    '''
+    url = f'https://api.themoviedb.org/3/find/{imdb_id}?\
+      api_key={self.API_KEY}&external_source=imdb_id'
+    response_json: dict = self._request_query(url).json()
+    for result_type, result in response_json.items():
+      if len(result) != 0:
+        return result[0].get('id', None)
 
   def search_movie(self,
                   query: str,
@@ -84,3 +98,4 @@ class TMDB:
     url = self._get_content_url(content_id, content_type, '/recommendations')
     response = self._request_query(url)
     return response.json()
+  

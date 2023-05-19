@@ -25,6 +25,11 @@ class Test_TMDB(unittest.TestCase):
     
     assert response == self.john_wick_imdb_id, ''
 
+  def test_get_tmdb_id(self):
+    response = self.tmdb.get_tmdb_id(self.john_wick_imdb_id)
+    
+    assert response == self.john_wick_tmdb_id, ''
+
   def test_search_movie(self):
     response = self.tmdb.search_movie(self.john_wick_title)
 
