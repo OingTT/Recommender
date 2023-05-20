@@ -66,7 +66,7 @@ class DataBaseLoader():
     today = datetime.today()
     return today.year - birthday.year - ((today.month, today.day) < (birthday.month, birthday.day))
   
-  def getReviews(self, ) -> pd.DataFrame:
+  def getAllReviews(self) -> pd.DataFrame:
     query = 'SELECT * FROM Review'
     response = self.__execute(query)
     reviews = list()
@@ -95,7 +95,7 @@ class DataBaseLoader():
     return pd.DataFrame().from_records(reviews)
 
 
-  def getUsers(self, ) -> pd.DataFrame:
+  def getAllUsers(self, ) -> pd.DataFrame:
     query = 'SELECT * FROM User'
     response = self.__execute(query)
     users = list()

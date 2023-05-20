@@ -30,14 +30,15 @@ class GHRS:
     TODO TMDB ID로 변경해서 보내야함
     '''
     self.datasetDir = datasetDir
-    self.debug = CFG['debug']
-    self.train_AE = CFG['train_ae']
-    self.latent_dim = CFG['latent_dim']
-    self.batch_size = CFG['batch_size']
-    self.num_workers = CFG['num_workers']
-    self.val_rate = CFG['val_rate']
-    self.accelerator = CFG['device']
-    self.max_epoch = CFG['max_epoch']
+    self.CFG = CFG
+    # self.debug = CFG['debug']
+    # self.train_AE = CFG['train-ae']
+    # self.latent_dim = CFG['latent-dim']
+    # self.batch_size = CFG['batch-size']
+    # self.num_workers = CFG['num-workers']
+    # self.val_rate = CFG['val-rate']
+    # self.accelerator = CFG['device']
+    # self.max_epoch = CFG['max-epoch']
     modelCheckpoint = ModelCheckpoint(
       save_top_k=10,
       monitor="valid_loss",
@@ -48,14 +49,15 @@ class GHRS:
     self.ghrsDataset = GHRSDataset(
       self.datasetDir,
       DataBaseLoader=DataBaseLoader(),
-      batch_size=self.batch_size,
-      num_workers=self.num_workers,
-      val_rate=self.val_rate
+      batch_size=self.CFG['batch-size'],
+      num_workers=self.CFG['num-workers'],
+      val_rate=self.CFG['val-rate'],
     )
+    loggers = self.__getLoggers()
     self.trainer = pl.Trainer(
-      accelerator=self.accelerator,
-      max_epochs=self.max_epoch,
-      logger=self.__getLoggers(),
+      accelerator=self.CFG['device'],
+      max_epochs=self.CFG['max-epoch'],
+      logger=loggers,
       callbacks=[modelCheckpoint],
       default_root_dir="./PretrainedModel",
       log_every_n_steps=1,
@@ -134,30 +136,31 @@ class GHRS:
     # target_cluster_rating_mean_rating => top 10 movies
     target_cluster_rating_mean = target_cluster_rating_mean.iloc[:10]
     return target_cluster_rating_mean
-
     
   def __getLoggers(self) -> list:
+    if not self.CFG['log']:
+      return list()
+
     log_dir = f'./train_logs'
     modelName = f'GHRS_{datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S")}'
-    loggers = list()
-    loggers.append(CSVLogger(
-      save_dir=log_dir,
-      name=modelName,
-    ))
-    if not self.debug:
-      loggers.append(TensorBoardLogger(
+    return [
+      CSVLogger(
+        save_dir=log_dir,
+        name=modelName,
+      ),
+      TensorBoardLogger(
         save_dir=log_dir,
         name=modelName,
         log_graph=True,
-      ))
-      loggers.append(WandbLogger(
+      ),
+      WandbLogger(
         project=f'GHRS',
         name=modelName,
-      ))
-    return loggers
+      )
+    ]
 
   def trainAutoEncoder(self):
-    self.autoEncoder = AutoEncoder(len(self.ghrsDataset), self.latent_dim)
+    self.autoEncoder = AutoEncoder(len(self.ghrsDataset), self.CFG['latent-dim'])
     self.trainer.fit(
       self.autoEncoder,
       datamodule=self.ghrsDataset,
