@@ -24,6 +24,7 @@ class GHRS:
     https://github.com/OingTT/Recommender.git
     '''
     self.datasetDir = datasetDir
+    self.debug = CFG['debug']
     self.train_AE = CFG['train_ae']
     self.latent_dim = CFG['latent_dim']
     self.batch_size = CFG['batch_size']
@@ -33,10 +34,10 @@ class GHRS:
     self.max_epoch = CFG['max_epoch']
     modelCheckpoint = ModelCheckpoint(
       save_top_k=10,
-      monitor="val_loss",
+      monitor="valid_loss",
       mode="min",
       dirpath="./PretrainedModel",
-      filename="Pretrained-{epoch:02d}-{val_loss:.2f}",
+      filename="Pretrained-{epoch:02d}-{valid_loss:.3f}",
     )
     self.ghrsDataset = GHRSDataset(
       self.datasetDir,
@@ -51,6 +52,7 @@ class GHRS:
       logger=self.__getLoggers(),
       callbacks=[modelCheckpoint],
       default_root_dir="./PretrainedModel",
+      log_every_n_steps=1,
     )
 
   def __call__(self, ):
@@ -58,39 +60,43 @@ class GHRS:
     this function assume that autoencoder is already trained
     '''
     chkps = dict()
-    for chkp in os.listdir():
+    print(os.listdir("./PretrainedModel"))
+    for chkp in os.listdir("./PretrainedModel"):
       if not chkp.startswith('Pretrained-epoch'):
         continue
       splited = chkp.split('-')
-      epoch = int(splited[1])
-      loss = float(splited[2])
+      epoch = int((splited[1]).split('=')[1])
+      loss = float((splited[2]).split('=')[1].replace('.ckpt', ''))
       chkps.update({epoch: loss})
     min_loss = min(chkps.values())
     min_epoch = [epoch for epoch, loss in chkps.items() if loss == min_loss][0]
-    best_model = f'Pretrained-{min_epoch}-{min_loss:.2f}.ckpt'
+    best_model = f'PretrainedModel/Pretrained-epoch={min_epoch}-valid_loss={min_loss}.ckpt'
 
     self.autoEncoder = AutoEncoder.load_from_checkpoint(
       checkpoint_path=best_model,
     )
-    self.trainer.predict(self.autoEncoder, self.ghrsDataset)
+    prediction = self.trainer.predict(self.autoEncoder, datamodule=self.ghrsDataset)
+    return prediction
     
-  def __getLoggers(self, ):
+  def __getLoggers(self) -> list:
     log_dir = f'./train_logs'
     modelName = f'GHRS_{datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S")}'
-    tb_logger = TensorBoardLogger(
+    loggers = list()
+    loggers.append(CSVLogger(
       save_dir=log_dir,
       name=modelName,
-      log_graph=True,
-    )
-    csv_logger = CSVLogger(
-      save_dir=log_dir,
-      name=modelName,
-    )
-    wandb_logger = WandbLogger(
-      project=f'GHRS',
-      name=modelName,
-    )
-    return [tb_logger, csv_logger, wandb_logger]
+    ))
+    if not self.debug:
+      loggers.append(TensorBoardLogger(
+        save_dir=log_dir,
+        name=modelName,
+        log_graph=True,
+      ))
+      loggers.append(WandbLogger(
+        project=f'GHRS',
+        name=modelName,
+      ))
+    return loggers
 
   def trainAutoEncoder(self):
     self.autoEncoder = AutoEncoder(len(self.ghrsDataset), self.latent_dim)
@@ -98,7 +104,13 @@ class GHRS:
       self.autoEncoder,
       datamodule=self.ghrsDataset,
     )
-    
+  
+  def exportModel(self, model: pl.LightningModule, modelName: str = 'GHRS') -> None:
+    '''
+    Export model to outside of docker container
+    '''
+    model.save_checkpoint(f'./PretrainedModel/{modelName}.ckpt')
+
   def predictAutoencoder(self):
     return self.trainer.predict(self.autoEncoder, self.ghrsDataset)
   

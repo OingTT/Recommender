@@ -42,9 +42,9 @@ class GHRSDataset(pl.LightningDataModule):
 
   def __len__(self):
     '''
-    Return dim of datasets 'feature'
+    Return dim of datasets 'feature' (except UID)
     '''
-    return len(self.GraphFeature_df.loc[:, ~self.GraphFeature_df.columns.isin(['Rating', 'UID', 'MID'])].columns)
+    return self.whole_data.shape[1] - 1 # except UID
 
   def __convert2Categorical(self, df_X: pd.DataFrame, _X: str) -> pd.DataFrame:
     values = np.array(df_X[_X])
@@ -75,18 +75,6 @@ class GHRSDataset(pl.LightningDataModule):
     return None
   
   def _prepare_data(self) -> None:
-    ratings_df = pd.read_csv(
-      os.path.join(self.movieLensDir, 'ratings.dat'),
-      sep='\::',
-      engine='python',
-      names=['UID', 'MID', 'Rating', 'Timestamp'],
-      dtype={
-        'UID': 'uint16',
-        'MID': 'uint16',
-        'Rating': 'uint8',
-        'Timestamp': 'uint64'
-      }
-    )
     users_df = pd.read_csv(
       os.path.join(self.movieLensDir, 'users.dat'),
       sep='\::',
@@ -100,14 +88,27 @@ class GHRSDataset(pl.LightningDataModule):
         'Zip': 'string'
       }
     )
+    ratings_df = pd.read_csv(
+      os.path.join(self.movieLensDir, 'ratings.dat'),
+      sep='\::',
+      engine='python',
+      names=['UID', 'MID', 'Rating', 'Timestamp'],
+      dtype={
+        'UID': 'uint16',
+        'MID': 'uint16',
+        'Rating': 'uint8',
+        'Timestamp': 'uint64'
+      }
+    )
 
-    # TMDB id To IMDB id
-    ratings_df['MID'] = self.tmdb_api.get_tmdb_id(ratings_df['MID'].values)
+    # IMDB-ID to TMDB-ID is take too long so I will use TMDB-ID temporarily
+    # ratings_df['MID'] = self.tmdb_api.get_tmdb_ids(ratings_df['MID'].values)
     
     self._prepare_pred_data(ratings_df=ratings_df, users_df=users_df)
 
-    self.Ratings_df = ratings_df
     self.Users_df = users_df
+    self.Ratings_df = ratings_df
+
     for occupation in OCCUPATION_MAP.items():
       self.Users_df['Occupation'] = self.Users_df['Occupation'].replace(occupation[1], occupation[0])
 
@@ -115,36 +116,22 @@ class GHRSDataset(pl.LightningDataModule):
 
     self.GraphFeature = GraphFeature(self.Ratings_df, self.Users_df)
     self.GraphFeature_df = self.GraphFeature()
-    
-    except_uid = self.GraphFeature_df.loc[:, ~self.GraphFeature_df.columns.isin(['Rating', 'UID', 'MID'])].values
-    contain_uid = pd.concat([self.GraphFeature_df['UID'], except_uid], axis=1).values
 
-    columns = contain_uid.columns.tolist()
-    uid_idx = 0
-    for idx, column in enumerate(columns):
-      if column == 'UID':
-        uid_idx = idx
-        break
-    columns = columns[uid_idx: ] + columns[: uid_idx]
-    contain_uid = contain_uid[columns]
-
-    print(contain_uid)
-
-    self.whole_data = torch.Tensor(contain_uid)
+    self.whole_data = torch.Tensor(self.GraphFeature_df.values)
     
     self.whole_dataset = TensorDataset(self.whole_data)
 
     self.train_set, self.valid_set = random_split(self.whole_dataset, [(1 - self.val_rate), self.val_rate])
   
-  def _prepare_pred_data(self, ratings_df: pd.DataFrame=None, users_df: pd.DataFrame=None) -> Tuple[pd.DataFrame, pd.DataFrame]:
+  def _prepare_pred_data(self, users_df: pd.DataFrame=None, ratings_df: pd.DataFrame=None) -> Tuple[pd.DataFrame, pd.DataFrame]:
     '''
     Movie Lens Dataset을 사용하는 이유가 Cold start problem 해결하기 위함이므로
     데이터가 충분히 많은 경우에는 Movie Lens Dataset을 사용하지 않고
     DataBaseLoader만을 사용해 데이터를 불러올 예정.
     '''
-    assert self.dataBaseLoader is not None, 'dataBaseLoader must be set'
-    assert self.Users_df is not None, 'Users_df must be set'
-    assert self.Ratings_df is not None, 'Ratings_df must be set'
+    assert self.dataBaseLoader is not None, 'GHRSDataset.dataBaseLoader must be set'
+    assert users_df is not None, 'Users_df must be set'
+    assert ratings_df is not None, 'Ratings_df must be set'
     
     db_ratings = self.dataBaseLoader.getReviews()
     ratings_df = pd.concat([ratings_df, db_ratings])
@@ -161,5 +148,3 @@ class GHRSDataset(pl.LightningDataModule):
   def predict_dataloader(self):
     return DataLoader(self.whole_dataset, batch_size=self.batch_size, num_workers=self.num_workers, shuffle=False)
   
-g = GHRSDataset()
-g.prepare_data()

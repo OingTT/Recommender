@@ -6,10 +6,12 @@ from arg_parser import get_args
 
 cfgs = get_args()
 
-if not cfgs.debug:
+if not cfgs['debug']:
   wandb.login()
 
 ghrs = GHRS(CFG=cfgs)
 ghrs.trainAutoEncoder()
 
-ghrs()
+prediction = ghrs()
+
+print(prediction)

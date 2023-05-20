@@ -52,7 +52,6 @@ class GraphFeature(metaclass=ABCMeta):
       for key, group in tqdm(grouped, desc='_getGraph::extend'):
         for comb in itertools.combinations(group['UID'], 2):
           self.pairs.extend(list(comb))
-      print(self.pairs[:10])
       # save_pickle(self.pairs, './pairs.pkl')
 
   def _getEdgeList(self, alpha_coef):
@@ -63,6 +62,8 @@ class GraphFeature(metaclass=ABCMeta):
     self.edge_list = load_pickle(edge_list_path)
     if not self.edge_list and self.is_pred:
       self.edge_list = map(list, collections.Counter(el for el in tqdm(counter.elements(), desc='_getGraph::map', total=132483307) if counter[el] >= alpha).keys())
+      if not os.path.exists(edge_list_path):
+        os.makedirs(os.path.dirname(edge_list_path), exist_ok=True)
       save_pickle(self.edge_list, edge_list_path)
 
   def graphFeature2DataFrame(self, col_name: str, graph_feature: pd.Series) -> None:
@@ -76,7 +77,7 @@ class GraphFeature(metaclass=ABCMeta):
     self._calcBetweennessCentrality()
     self._calcLoadCentrality()
     self._calcAverageNeighborDegree()
-    graphFeature_df = self.users_df[self.users_df.columns[1:]]
+    graphFeature_df = self.users_df[self.users_df.columns[0:]]
     graphFeature_df.fillna(0, inplace=True)
     self.graphFeature_df = graphFeature_df
 

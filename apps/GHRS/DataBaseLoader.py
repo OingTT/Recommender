@@ -50,13 +50,20 @@ class DataBaseLoader():
       self.__connect()
     if len(args) == 1:
       args = (args[0], )
-    self.cursor.execute(query, args)
+    print(args)
+    if len(args) != 0:
+      self.cursor.execute(query, args)
+    else:
+      self.cursor.execute(query)
+    
     return self.cursor.fetchall()
   
   def __getAge(self, birthday: datetime) -> int:
     '''
     Movie Lens는 1998년에 만들어진 데이터셋이므로, 1998년을 기준으로 나이를 계산했을듯
     '''
+    if birthday is None:
+      return None
     today = datetime.today()
     return today.year - birthday.year - ((today.month, today.day) < (birthday.month, birthday.day))
   
@@ -104,6 +111,8 @@ class DataBaseLoader():
       OCCUPATION = row[7]
       GENDER = row[8]
       AGE = self.__getAge(BIRTHDAY)
+      if BIRTHDAY is None or OCCUPATION is None or GENDER is None: # 필수 정보가 없는 경우 제외
+        continue
       users.append({
         'UID': UID,
         'Gender': GENDER,
@@ -126,4 +135,4 @@ class DataBaseLoader():
     return self.__execute('SELECT * FROM Review WHERE userId=%s;', uid)
   
   def _test(self, args):
-    print(self.__execute(*args))
+    return self.__execute(args)

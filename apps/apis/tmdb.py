@@ -1,8 +1,9 @@
 import os
 import requests
 
+from tqdm import tqdm
 from dotenv import load_dotenv
-from typing import Union
+from typing import Union, Iterable
 
 from apps.utils.utils import _binary2image
 
@@ -45,6 +46,12 @@ class TMDB:
     for result_type, result in response_json.items():
       if len(result) != 0:
         return result[0].get('id', None)
+      
+  def get_tmdb_ids(self, imdb_ids: Iterable, content_type: str='movie'):
+    tmdb_ids = list()
+    for imdb_id in tqdm(imdb_ids):
+      tmdb_ids.append(self.get_tmdb_id(imdb_id, content_type))
+    return tmdb_ids
 
   def search_movie(self,
                   query: str,

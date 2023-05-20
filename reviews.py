@@ -24,10 +24,14 @@ def len_reviews_by_email(dbLoader: DataBaseLoader, userEmail):
 
 
 dbLoader = DataBaseLoader()
-dbLoader._test('SELECT * FROM Reviwe')
 # len_reviews_by_name(dbLoader, '박준서')
 # len_reviews_by_name(dbLoader, 'dong')
 # len_reviews_by_name(dbLoader, '이정준')
 # len_reviews_by_name(dbLoader, '김종인')
 # len_reviews_by_email(dbLoader, 'dalek76@naver.com')
 # len_reviews_by_name(dbLoader, '은댕')
+
+users = dbLoader._test('SELECT * FROM User')
+for user in users:
+  if user[6] == None:
+    print("!!!!!")

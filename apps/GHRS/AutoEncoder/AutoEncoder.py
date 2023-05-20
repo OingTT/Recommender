@@ -4,7 +4,7 @@ import pytorch_lightning as pl
 
 from torch import nn, Tensor
 from copy import deepcopy
-from typing import Tuple
+from typing import Any, Tuple
 
 class AutoEncoder(pl.LightningModule):
     def __init__(self, in_feature: int, latent_dim: int, learning_rate: float=0.05) -> None:
@@ -12,11 +12,15 @@ class AutoEncoder(pl.LightningModule):
       self.in_feature = in_feature
       self.latent_dim = latent_dim
       self.learning_rate = learning_rate
+      self.save_hyperparameters()
       self.loss_fn = nn.MSELoss()
 
-      assert (in_feature / 2) > latent_dim, 'Latent dimension must be less than half of input feature dimension'
+      assert (in_feature / 2) > latent_dim, 'Latent dimension must be less than half of input feature dimension\
+        \n\t in_feature: {}, latent_dim: {}'.format(in_feature, latent_dim)
 
       self._h_in_feature = int(in_feature / 2)
+
+      print('in_feature: {}, latent_dim: {}, h_in_feature: {}'.format(in_feature, latent_dim, self._h_in_feature))
 
       self.Encoder = nn.Sequential(
         nn.Linear(in_feature, self._h_in_feature),
@@ -62,8 +66,9 @@ class AutoEncoder(pl.LightningModule):
       decoded = self.Decoder(encoded)
       return (encoded, decoded)
 
-    def __common_step(self, batch: Tuple[Tensor, Tensor], batch_idx) -> Tuple[Tensor, Tensor, Tensor, Tensor]:
+    def __common_step(self, batch: Tuple[Tensor], batch_idx: int) -> Tuple[Tensor, Tensor, Tensor]:
       x = batch[0]
+      x = x[:, 1:] # Remove UID
       x = x.reshape(x.size(0), -1)
       encoded, decoded = self.forward(x)
       loss = self.loss_fn(decoded, x)
@@ -83,6 +88,10 @@ class AutoEncoder(pl.LightningModule):
       loss, encoded, decoded = self.__common_step(batch, batch_idx)
       self._log_dict({'test_loss': loss})
       return loss
+    
+    def predict_step(self, batch: Any, batch_idx: int, dataloader_idx: int = 0) -> Any:
+      loss, encoded, decoded = self.__common_step(batch, batch_idx)
+      return encoded
 
     def configure_optimizers(self):
       return torch.optim.Adam(self.parameters(), lr=self.learning_rate)

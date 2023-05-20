@@ -10,5 +10,5 @@ def get_args():
   parser.add_argument('--num_workers', action='store', help='number of workers', default=4, type=int)
   parser.add_argument('--val_rate', action='store', help='validation rate', default=0.2, type=float)
   parser.add_argument('--max_epoch', action='store', help='maximum epoch', default=100, type=int)
-
+  
   return vars(parser.parse_args())

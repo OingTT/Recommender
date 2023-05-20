@@ -6,7 +6,7 @@ import apps.GHRS.GraphFeature.GraphFeature as GraphFeature
 
 from apps.GHRS.GraphFeature.GraphFeature import TimeTaken
 
-class GraphFeature_CU(GraphFeature.GraphFeature):
+class GraphFeature_RAPIDS(GraphFeature.GraphFeature):
   def _getEdgeList(self) -> None:
     self.G = cugraph.Graph()
 

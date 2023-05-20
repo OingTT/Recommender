@@ -39,12 +39,15 @@ RUN wget --quiet https://repo.anaconda.com/archive/Anaconda3-2023.03-1-Linux-x86
 
 RUN . ~/.bashrc && . ~/.temp
 
-# Copy file
-COPY . .
+
+COPY ./requirements.txt ./requirements.txt
 
 RUN /root/anaconda3/envs/recommender/bin/python -m pip install -r ./requirements.txt
 
-ENTRYPOINT ["/root/anaconda3/envs/recommender/bin/python", "GHRS_test.py"]
+# Copy file
+COPY . .
+
+ENTRYPOINT ["/root/anaconda3/envs/recommender/bin/python", "GHRS_test.py", "--debug", "--latent_dim", "8", "--max_epoch", "20"]
 
 # RUN /bin/bash conda activate recommender
 
