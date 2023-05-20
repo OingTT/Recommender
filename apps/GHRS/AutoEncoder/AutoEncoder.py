@@ -1,5 +1,6 @@
 import torch
 
+import pandas as pd
 import pytorch_lightning as pl
 
 from torch import nn, Tensor
@@ -89,9 +90,16 @@ class AutoEncoder(pl.LightningModule):
       self._log_dict({'test_loss': loss})
       return loss
     
-    def predict_step(self, batch: Any, batch_idx: int, dataloader_idx: int = 0) -> Any:
-      loss, encoded, decoded = self.__common_step(batch, batch_idx)
-      return encoded
+    def predict_step(self, batch: Tuple[Tensor], batch_idx: int, dataloader_idx: int = 0) -> Tuple[pd.DataFrame, ...]:
+      x = batch[0]
+      UID = x[:, 0].int() # UID
+      x = x[:, 1:] # Remove UID
+      x = x.reshape(x.size(0), -1)
+      encoded, decoded = self.forward(x)
+      loss = self.loss_fn(decoded, x)
+      columns = ['UID'] + ['encoded_{}'.format(i) for i in range(self.latent_dim)]
+      encoded_df = pd.DataFrame(torch.cat([UID.unsqueeze(1), encoded], dim=1).cpu().numpy(), columns=columns)
+      return encoded_df
 
     def configure_optimizers(self):
       return torch.optim.Adam(self.parameters(), lr=self.learning_rate)

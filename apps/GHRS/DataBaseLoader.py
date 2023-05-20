@@ -50,7 +50,6 @@ class DataBaseLoader():
       self.__connect()
     if len(args) == 1:
       args = (args[0], )
-    print(args)
     if len(args) != 0:
       self.cursor.execute(query, args)
     else:

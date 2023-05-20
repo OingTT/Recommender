@@ -81,7 +81,7 @@ class GHRSDataset(pl.LightningDataModule):
       engine='python',
       names=['UID', 'Gender', 'Age', 'Occupation', 'Zip'],
       dtype={
-        'UID': 'uint16',
+        'UID': 'string',
         'Gender': 'str',
         'Age': 'uint8',
         'Occupation': 'uint8',
@@ -94,7 +94,7 @@ class GHRSDataset(pl.LightningDataModule):
       engine='python',
       names=['UID', 'MID', 'Rating', 'Timestamp'],
       dtype={
-        'UID': 'uint16',
+        'UID': 'string',
         'MID': 'uint16',
         'Rating': 'uint8',
         'Timestamp': 'uint64'
@@ -103,8 +103,7 @@ class GHRSDataset(pl.LightningDataModule):
 
     # IMDB-ID to TMDB-ID is take too long so I will use TMDB-ID temporarily
     # ratings_df['MID'] = self.tmdb_api.get_tmdb_ids(ratings_df['MID'].values)
-    
-    self._prepare_pred_data(ratings_df=ratings_df, users_df=users_df)
+    users_df, ratings_df = self._prepare_pred_data(ratings_df=ratings_df, users_df=users_df)
 
     self.Users_df = users_df
     self.Ratings_df = ratings_df
@@ -134,10 +133,10 @@ class GHRSDataset(pl.LightningDataModule):
     assert ratings_df is not None, 'Ratings_df must be set'
     
     db_ratings = self.dataBaseLoader.getReviews()
-    ratings_df = pd.concat([ratings_df, db_ratings])
+    ratings_df = pd.concat([ratings_df, db_ratings], axis=0)
     db_users = self.dataBaseLoader.getUsers()
-    ratings_df = pd.concat([ratings_df, db_users])
-    return ratings_df, users_df
+    users_df = pd.concat([users_df, db_users], axis=0)
+    return users_df, ratings_df
 
   def train_dataloader(self):
     return DataLoader(self.train_set, batch_size=self.batch_size, num_workers=self.num_workers, shuffle=True)
