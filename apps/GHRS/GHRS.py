@@ -31,14 +31,6 @@ class GHRS:
     '''
     self.datasetDir = datasetDir
     self.CFG = CFG
-    # self.debug = CFG['debug']
-    # self.train_AE = CFG['train-ae']
-    # self.latent_dim = CFG['latent-dim']
-    # self.batch_size = CFG['batch-size']
-    # self.num_workers = CFG['num-workers']
-    # self.val_rate = CFG['val-rate']
-    # self.accelerator = CFG['device']
-    # self.max_epoch = CFG['max-epoch']
     modelCheckpoint = ModelCheckpoint(
       save_top_k=10,
       monitor="valid_loss",
@@ -47,16 +39,14 @@ class GHRS:
       filename="Pretrained-{epoch:02d}-{valid_loss:.4f}",
     )
     self.ghrsDataset = GHRSDataset(
-      self.datasetDir,
+      CFG=self.CFG,
+      movieLensDir=self.datasetDir,
       DataBaseLoader=DataBaseLoader(),
-      batch_size=self.CFG['batch-size'],
-      num_workers=self.CFG['num-workers'],
-      val_rate=self.CFG['val-rate'],
     )
     loggers = self.__getLoggers()
     self.trainer = pl.Trainer(
       accelerator=self.CFG['device'],
-      max_epochs=self.CFG['max-epoch'],
+      max_epochs=self.CFG['max_epoch'],
       logger=loggers,
       callbacks=[modelCheckpoint],
       default_root_dir="./PretrainedModel",
@@ -160,7 +150,7 @@ class GHRS:
     ]
 
   def trainAutoEncoder(self):
-    self.autoEncoder = AutoEncoder(len(self.ghrsDataset), self.CFG['latent-dim'])
+    self.autoEncoder = AutoEncoder(len(self.ghrsDataset), self.CFG['latent_dim'])
     self.trainer.fit(
       self.autoEncoder,
       datamodule=self.ghrsDataset,

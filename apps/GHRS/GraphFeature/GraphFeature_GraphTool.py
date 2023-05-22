@@ -1,3 +1,4 @@
+import graph_tool as gt
 from graph_tool.all import *
 from graph_tool import centrality
 
@@ -12,7 +13,7 @@ class GraphFeature_GraphTool(GraphFeature.GraphFeature):
   def _addGraphEdges(self) -> None:
     self.G = Graph()
 
-    for el in tqdm(self.edge_list, desc='_getGraph::add_edge', total=1655185):
+    for el in tqdm(self.edge_list, desc='_getGraph::add_edge'):
       self.G.add_edge_list([
         (el[0], el[0]),
         (el[0], el[1]),
@@ -70,9 +71,15 @@ class GraphFeature_GraphTool(GraphFeature.GraphFeature):
     # lc = centrality.load(self.G)
     # self.graphFeature2DataFrame('LC', lc)
     ...
-    
+
+  @TimeTaken
+  def _calcEigenVectorCentrality(self) -> None:
+    ec = centrality.eigenvector(self.G)
+    self.graphFeature2DataFrame('EC', ec)
+
   @TimeTaken
   def _calcAverageNeighborDegree(self) -> None:
     # nd = centrality.average_neightbor_degree(self.G)
     # self.graphFeature2DataFrame('ND', nd)
     ...
+    

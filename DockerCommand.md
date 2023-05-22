@@ -3,6 +3,11 @@ docker build -t \<Image-Name> \<Docker-File-Path>
 
 docker build -t recommender .
 
+# Build Docker Image from specified DockerFile
+If Dockerfile name is Dockerfile.\<Sub-Name>
+
+docker build -t \<Image-Name> -f ./Dockerfile.\<Sub-Name> .
+
 # Remove Docker already running Container which had same name
 docker rm \<Container-Name>
 

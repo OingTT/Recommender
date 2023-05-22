@@ -32,42 +32,37 @@ class GraphFeature(metaclass=ABCMeta):
   def __call__(self, alpha_coef: float=0.005) -> pd.DataFrame:
     graphFeature_df_path = os.path.join(self.preprocessed_data_dir, 'graphFeature.pkl')
     self.graphFeature_df = load_pickle(graphFeature_df_path)
+    self.graphFeature_df = None
     if not isinstance(self.graphFeature_df, pd.DataFrame):
       self._getGraph(alpha_coef=alpha_coef)
       self._getGraphFeature()
       save_pickle(self.graphFeature_df, graphFeature_df_path)
     return self.graphFeature_df
+  
+  def _add_edge(self, edge: list) -> None:
+    self.graph.add_edge(edge[0], edge[1])
 
   def _getGraph(self, alpha_coef):
     self._extendPairs()
     self._getEdgeList(alpha_coef)
-    self._addGraphEdges()
+    self._addGraphEdges() # UID가 String이라서, 그냥 넣으면 안됨
 
   def _extendPairs(self):
-    # self.pairs = load_pickle('./pairs.pkl')
-    self.pairs = False
-    if not self.pairs and self.is_pred:
-      self.pairs = list()
-      grouped = self.ratings.groupby(['MID', 'Rating'])
-      for key, group in tqdm(grouped, desc='_getGraph::extend'):
-        for comb in itertools.combinations(group['UID'], 2):
-          self.pairs.extend(list(comb))
-      # save_pickle(self.pairs, './pairs.pkl')
+    self.pairs = list()
+    grouped = self.ratings.groupby(['MID', 'Rating'])
+    for key, group in tqdm(grouped, desc='_getGraph::extend'):
+      for comb in itertools.combinations(group.index, 2):
+        self.pairs.append(comb)
 
   def _getEdgeList(self, alpha_coef):
     counter = collections.Counter(self.pairs)
     alpha = alpha_coef * 3883  # param*i_no
+    alpha = 0
     ### About 3~4 minute at aplha = 0.005 * 3883
-    edge_list_path = os.path.join(self.preprocessed_data_dir, 'edge_list_{:.3f}.pkl'.format(alpha))
-    self.edge_list = load_pickle(edge_list_path)
-    if not self.edge_list and self.is_pred:
-      self.edge_list = map(list, collections.Counter(el for el in tqdm(counter.elements(), desc='_getGraph::map', total=132483307) if counter[el] >= alpha).keys())
-      if not os.path.exists(edge_list_path):
-        os.makedirs(os.path.dirname(edge_list_path), exist_ok=True)
-      save_pickle(self.edge_list, edge_list_path)
+    self.edge_list = map(list, collections.Counter(el for el in tqdm(counter.elements(), desc='_getGraph::map', total=132483307) if counter[el] >= alpha).keys())
 
   def graphFeature2DataFrame(self, col_name: str, graph_feature: pd.Series) -> None:
-    self.users_df[col_name] = self.users_df['UID'].map(graph_feature)
+    self.users_df[col_name] = self.users_df.index.map(graph_feature)
     self.users_df[col_name] /= float(self.users_df[col_name].max())
 
   def _getGraphFeature(self) -> None:
@@ -102,10 +97,13 @@ class GraphFeature(metaclass=ABCMeta):
     ...
 
   @abstractmethod
+  def _calcEigenVectorCentrality(self) -> None:
+    ...
+
+  @abstractmethod
   def _calcLoadCentrality(self) -> None:
     ...
 
   @abstractmethod
   def _calcAverageNeighborDegree(self) -> None:
     ...
-

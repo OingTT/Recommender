@@ -1,3 +1,4 @@
+import pandas as pd
 import cudf, cugraph
 
 from tqdm import tqdm
@@ -7,6 +8,11 @@ import apps.GHRS.GraphFeature.GraphFeature as GraphFeature
 from apps.GHRS.GraphFeature.GraphFeature import TimeTaken
 
 class GraphFeature_RAPIDS(GraphFeature.GraphFeature):
+  def __init__(self, ratings_df: cudf.DataFrame, users_df: cudf.DataFrame, is_pred: bool = True):
+    super().__init__(ratings_df, users_df, is_pred)
+    self.ratings = cudf.DataFrame.from_pandas(ratings_df)
+    self.users_df = cudf.DataFrame.from_pandas(users_df)
+
   def _getEdgeList(self) -> None:
     self.G = cugraph.Graph()
 
@@ -14,9 +20,6 @@ class GraphFeature_RAPIDS(GraphFeature.GraphFeature):
       self.G.add_edge(el[0], el[1], weight=1)
       self.G.add_edge(el[0], el[0], weight=1)
       self.G.add_edge(el[1], el[1], weight=1)
-
-    self.users_cudf = cudf.DataFrame(self.users_df)
-    self.cuG = cugraph.from_networkx(self.G)
   
   @TimeTaken
   def _calcPagerank(self) -> None:
@@ -44,9 +47,15 @@ class GraphFeature_RAPIDS(GraphFeature.GraphFeature):
     # lc = cugraph.load_centrality(self.G)
     # self.graphFeature2DataFrame('LC', lc)
     ...
-    
+
+  @TimeTaken
+  def _calcEigenVectorCentrality(self) -> None:
+    ec = cugraph.eigenvector_centrality(self.G)
+    self.graphFeature2DataFrame('EC', ec)
+        
   @TimeTaken
   def _calcAverageNeighborDegree(self) -> None:
     # nd = cugraph.average_neighbor_degree(self.G, weight='weight')
     # self.graphFeature2DataFrame('AND', nd)
     ...
+

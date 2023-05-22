@@ -13,6 +13,7 @@ from apps.apis.TMDB import TMDB
 from .Const import OCCUPATION_MAP
 from .DataBaseLoader import DataBaseLoader
 from .GraphFeature.GraphFeature_GraphTool import GraphFeature_GraphTool as GraphFeature
+# from .GraphFeature.GraphFeature_RAPIDS import GraphFeature_RAPIDS as GraphFeature
 
 class GHRSDataset(pl.LightningDataModule):
   '''
@@ -39,7 +40,7 @@ class GHRSDataset(pl.LightningDataModule):
     '''
     Return dim of datasets 'feature' (except UID)
     '''
-    return self.whole_data.shape[1] - 1 # except UID
+    return self.whole_dataset.shape[1] - 1 # except UID
 
   def __convert2Categorical(self, df_X: pd.DataFrame, _X: str) -> pd.DataFrame:
     values = np.array(df_X[_X])
@@ -69,6 +70,16 @@ class GHRSDataset(pl.LightningDataModule):
     users_df = users_df.drop(columns='Zip')
     return users_df
   
+  def __sample_movie_lens(self,
+                          users_df: pd.DataFrame,
+                          ratings_df: pd.DataFrame,
+                          sample_ratio: float=0.3,
+                          random_state: int=None) -> Tuple[pd.DataFrame, pd.DataFrame]:
+    sample_len = int(len(users_df) * 0.01)
+    sampled_users_df = users_df.sample(sample_len, random_state=random_state)
+    sampled_ratings_df = ratings_df[ratings_df['UID'].isin(sampled_users_df['UID'])]
+    return sampled_users_df, sampled_ratings_df
+  
   def __prepare_data(self) -> None:
     users_df = pd.read_csv(
       os.path.join(self.movieLensDir, 'users.dat'),
@@ -76,7 +87,7 @@ class GHRSDataset(pl.LightningDataModule):
       engine='python',
       names=['UID', 'Gender', 'Age', 'Occupation', 'Zip'],
       dtype={
-        'UID': 'string',
+        'UID': 'uint8',
         'Gender': 'str',
         'Age': 'uint8',
         'Occupation': 'uint8',
@@ -89,35 +100,49 @@ class GHRSDataset(pl.LightningDataModule):
       engine='python',
       names=['UID', 'MID', 'Rating', 'Timestamp'],
       dtype={
-        'UID': 'string',
+        'UID': 'uint8',
         'MID': 'uint16',
         'Rating': 'uint8',
         'Timestamp': 'uint64'
       }
     )
+    # Sample MovieLens
+    if self.CFG['sample_ratio'] != 1.: # No sampling
+      users_df, ratings_df = self.__sample_movie_lens(
+        users_df,
+        ratings_df,
+        sample_ratio=self.CFG['sample_ratio'],
+        random_state=1
+      )
+
     # IMDB-ID to TMDB-ID is take too long so I will use TMDB-ID temporarily
     # ratings_df['MID'] = self.tmdb_api.get_tmdb_ids(ratings_df['MID'].values)
-    db_users, db_ratings = self.__get_db_data(ratings_df=ratings_df, users_df=users_df)
+    db_users, db_ratings = self.__get_db_data()
     
     # Merge DB and MovieLens
     users_df = pd.concat([users_df, db_users], axis=0)
     ratings_df = pd.concat([ratings_df, db_ratings], axis=0)
 
-    # For test
-    users_df = db_users
-    ratings_df = db_ratings
+    if self.CFG['sample_ratio'] == 0.: # Use only DB Data
+      users_df = db_users
+      ratings_df = db_ratings
 
+    print(users_df)
     users_df = self.__preprocess_users_df(users_df=users_df)
+    print(users_df)
 
     self.GraphFeature = GraphFeature(ratings_df, users_df)
     self.GraphFeature_df = self.GraphFeature()
-
+    print(self.GraphFeature_df)
+    
     whole_x = torch.Tensor(self.GraphFeature_df.values[:, 1:])
     whole_y = torch.Tensor(self.GraphFeature_df.values[:, 0])
     
+    print(whole_y)
+    
     self.whole_dataset = TensorDataset(whole_x, whole_y)
 
-    self.train_set, self.valid_set = random_split(self.whole_dataset, [(1 - self.val_rate), self.val_rate])
+    self.train_set, self.valid_set = random_split(self.whole_dataset, [(1 - self.CFG['val_rate']), self.CFG['val_rate']])
   
   def __get_db_data(self) -> Tuple[pd.DataFrame, pd.DataFrame]:
     '''
@@ -131,10 +156,10 @@ class GHRSDataset(pl.LightningDataModule):
     return db_users, db_ratings
 
   def train_dataloader(self):
-    return DataLoader(self.train_set, batch_size=self.CFG['batch-size'], num_workers=self.CFG['num-workers'], shuffle=True)
+    return DataLoader(self.train_set, batch_size=self.CFG['batch_size'], num_workers=self.CFG['num_workers'], shuffle=True)
   
   def val_dataloader(self):
-    return DataLoader(self.valid_set, batch_size=self.CFG['batch-size'], num_workers=self.CFG['num-workers'], shuffle=False)
+    return DataLoader(self.valid_set, batch_size=self.CFG['batch_size'], num_workers=self.CFG['num_workers'], shuffle=False)
   
   def predict_dataloader(self):
-    return DataLoader(self.whole_dataset, batch_size=self.CFG['batch-size'], num_workers=self.CFG['num-workers'], shuffle=False)
+    return DataLoader(self.whole_dataset, batch_size=self.CFG['batch_size'], num_workers=self.CFG['num_workers'], shuffle=False)
