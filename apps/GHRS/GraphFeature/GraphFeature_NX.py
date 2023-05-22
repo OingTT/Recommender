@@ -1,3 +1,4 @@
+import pandas as pd
 import networkx as nx
 
 from tqdm import tqdm
@@ -15,6 +16,18 @@ class GraphFeature_NX(GraphFeature.GraphFeature):
       self.G.add_edge(el[0], el[0], weight=1)
       self.G.add_edge(el[1], el[1], weight=1)
 
+  @TimeTaken
+  def _getGraphFeatures(self) -> pd.DataFrame:
+    self._calcPagerank()
+    self._calcDegreeCentrality()
+    self._calcClosenessCentrality()
+    self._calcBetweennessCentrality()
+    self._calcLoadCentrality()
+    self._calcAverageNeighborDegree()
+    graphFeature_df = self.users_df[self.users_df.columns[0:]]
+    graphFeature_df.fillna(0, inplace=True)
+    return graphFeature_df
+  
   @TimeTaken
   def _calcPagerank(self) -> None:
     pr = nx.pagerank(self.G.to_directed())

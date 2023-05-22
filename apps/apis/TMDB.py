@@ -40,8 +40,7 @@ class TMDB:
     '''
     Get TMDB ID from IMDB ID
     '''
-    url = f'https://api.themoviedb.org/3/find/{imdb_id}?\
-      api_key={self.API_KEY}&external_source=imdb_id'
+    url = f'https://api.themoviedb.org/3/find/{imdb_id}?api_key={self.API_KEY}&external_source=imdb_id'
     response_json: dict = self._request_query(url).json()
     for result_type, result in response_json.items():
       if len(result) != 0:

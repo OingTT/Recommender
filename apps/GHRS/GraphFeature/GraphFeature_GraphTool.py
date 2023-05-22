@@ -1,4 +1,4 @@
-import graph_tool as gt
+import pandas as pd
 from graph_tool.all import *
 from graph_tool import centrality
 
@@ -13,7 +13,7 @@ class GraphFeature_GraphTool(GraphFeature.GraphFeature):
   def _addGraphEdges(self) -> None:
     self.G = Graph()
 
-    for el in tqdm(self.edge_list, desc='_getGraph::add_edge'):
+    for el in tqdm(self.edge_list, desc='_getGraph::add_edge', total=1655185):
       self.G.add_edge_list([
         (el[0], el[0]),
         (el[0], el[1]),
@@ -43,22 +43,20 @@ class GraphFeature_GraphTool(GraphFeature.GraphFeature):
     return converted
   
   @TimeTaken
+  def _getGraphFeatures(self) -> pd.DataFrame:
+    self._calcPagerank()
+    self._calcBetweennessCentrality()
+    self._calcClosenessCentrality()
+    self._calcEigenvectorCentrality()
+    graphFeature_df = self.users_df[self.users_df.columns[0:]]
+    graphFeature_df.fillna(0, inplace=True)
+    return graphFeature_df
+  
+  @TimeTaken
   def _calcPagerank(self) -> None:
     pr = pagerank(self.G)
     pr_dict = self.VPM2dict(pr)
     self.graphFeature2DataFrame('PR', pr_dict)
-
-  @TimeTaken
-  def _calcDegreeCentrality(self) -> None:
-    # dc = centrality.degree(self.G)
-    # self.graphFeature2DataFrame('DC', dc)
-    ...
-
-  @TimeTaken
-  def _calcClosenessCentrality(self) -> None:
-    cc = centrality.closeness(self.G)
-    cc_dict = self.VPM2dict(cc)
-    self.graphFeature2DataFrame('CC', cc_dict)
 
   @TimeTaken
   def _calcBetweennessCentrality(self) -> None:
@@ -67,19 +65,13 @@ class GraphFeature_GraphTool(GraphFeature.GraphFeature):
     self.graphFeature2DataFrame('BC', bc_dict)
 
   @TimeTaken
-  def _calcLoadCentrality(self) -> None:
-    # lc = centrality.load(self.G)
-    # self.graphFeature2DataFrame('LC', lc)
-    ...
+  def _calcClosenessCentrality(self) -> None:
+    cc = centrality.closeness(self.G)
+    cc_dict = self.VPM2dict(cc)
+    self.graphFeature2DataFrame('CC', cc_dict)
 
   @TimeTaken
-  def _calcEigenVectorCentrality(self) -> None:
+  def _calcEigenvectorCentrality(self) -> None:
     ec = centrality.eigenvector(self.G)
-    self.graphFeature2DataFrame('EC', ec)
-
-  @TimeTaken
-  def _calcAverageNeighborDegree(self) -> None:
-    # nd = centrality.average_neightbor_degree(self.G)
-    # self.graphFeature2DataFrame('ND', nd)
-    ...
-    
+    ec_dict = self.VPM2dict(ec)
+    self.graphFeature2DataFrame('EC', ec_dict)

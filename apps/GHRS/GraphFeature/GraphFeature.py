@@ -23,6 +23,15 @@ def TimeTaken(func):
 
 class GraphFeature(metaclass=ABCMeta):
   preprocessed_data_dir = './preprocessed_data'
+  
+  # graphFeatures = list()
+  # def addGraphFeatureWrapper(self, func):
+  #   def wrapper(*args, **kargs):
+  #     func(*args, **kargs)
+  #     graphFeatureName = func.__name__.replace('_calc', '')
+  #     self.graphFeatures.append(graphFeatureName)
+  #     return func
+  #   return wrapper
 
   def __init__(self, ratings_df: pd.DataFrame, users_df: pd.DataFrame, is_pred: bool=True):
     self.ratings = ratings_df
@@ -35,7 +44,7 @@ class GraphFeature(metaclass=ABCMeta):
     self.graphFeature_df = None
     if not isinstance(self.graphFeature_df, pd.DataFrame):
       self._getGraph(alpha_coef=alpha_coef)
-      self._getGraphFeature()
+      self.graphFeature_df = self._getGraphFeatures()
       save_pickle(self.graphFeature_df, graphFeature_df_path)
     return self.graphFeature_df
   
@@ -77,33 +86,5 @@ class GraphFeature(metaclass=ABCMeta):
     self.graphFeature_df = graphFeature_df
 
   @abstractmethod
-  def _addGraphEdges(self) -> None:
-    ...
-
-  @abstractmethod
-  def _calcPagerank(self) -> None:
-    ...
-
-  @abstractmethod
-  def _calcDegreeCentrality(self) -> None:
-    ...
-
-  @abstractmethod
-  def _calcClosenessCentrality(self) -> None:
-    ...
-
-  @abstractmethod
-  def _calcBetweennessCentrality(self) -> None:
-    ...
-
-  @abstractmethod
-  def _calcEigenVectorCentrality(self) -> None:
-    ...
-
-  @abstractmethod
-  def _calcLoadCentrality(self) -> None:
-    ...
-
-  @abstractmethod
-  def _calcAverageNeighborDegree(self) -> None:
+  def _getGraphFeatures(self) -> pd.DataFrame:
     ...

@@ -11,6 +11,5 @@ def get_args():
   parser.add_argument('--num-workers', action='store', help='number of workers', default=4, type=int)
   parser.add_argument('--val-rate', action='store', help='validation rate', default=0.2, type=float)
   parser.add_argument('--max-epoch', action='store', help='maximum epoch', default=100, type=int)
-  parser.add_argument('--sample-ratio', action='store', help='MovieLens sampling ratio', default=0.3, type=int)
   
   return vars(parser.parse_args())
