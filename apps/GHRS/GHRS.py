@@ -151,8 +151,8 @@ class GHRS:
       mid = rating_mean['MID'].iloc[i]
       rating = rating_mean['Rating'].iloc[i]
       results.append(dict(
-        MID=mid,
-        Rating=rating
+        MID=str(mid),
+        Rating=float(rating)
       ))
     return results
     
