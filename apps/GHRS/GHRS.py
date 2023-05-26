@@ -147,7 +147,7 @@ class GHRS:
   
   def __result2json(self, rating_mean: pd.DataFrame) -> List[dict]:
     results = list()
-    for i in range(10):
+    for i in range(len(rating_mean)):
       mid = rating_mean['MID'].iloc[i]
       rating = rating_mean['Rating'].iloc[i]
       results.append(dict(
