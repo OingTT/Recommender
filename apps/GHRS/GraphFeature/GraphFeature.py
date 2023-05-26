@@ -36,7 +36,7 @@ class GraphFeature(metaclass=ABCMeta):
     if not isinstance(self.graphFeature_df, pd.DataFrame):
       self._getGraph(alpha_coef=alpha_coef)
       self.graphFeature_df = self._getGraphFeatures()
-      save_pickle(self.graphFeature_df, graphFeature_df_path)
+      # save_pickle(self.graphFeature_df, graphFeature_df_path)
     return self.graphFeature_df
   
   def _add_edge(self, edge: list) -> None:
