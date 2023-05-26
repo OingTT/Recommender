@@ -11,10 +11,10 @@ class Cluster():
       '''
       encoded_df shoud have UID column
       '''
+      # except_uid_df = encoded_df.drop(columns=['UID'])
       optimalK = self._findOptimalKWithSilhouetteScore(encoded_df, 2, 30)
       optimalK = 8
-      except_uid_df = encoded_df.drop(columns=['UID'])
-      clustering_result = self.KMeans(df=except_uid_df, K=optimalK, method='k-means++')
+      clustering_result = self.KMeans(df=encoded_df, K=optimalK, method='k-means++')
       return clustering_result
 
     def KMeans(self, df: pd.DataFrame, K: int=8, method: str='k-means++') -> None:

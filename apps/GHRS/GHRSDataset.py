@@ -94,8 +94,8 @@ class GHRSDataset(pl.LightningDataModule):
         'Timestamp': 'uint64'
       }
     )
-    # Sample MovieLens
-    if self.CFG['sample_rate'] != 1.: # Use whole movie lens sets
+    # Sampling MovieLens: While training autoencoder model use whole dataset which including MovieLens
+    if self.CFG['sample_rate'] != 1. or not self.CFG['train_ae']:
       users_df, ratings_df = self.__sample_movie_lens(
         users_df,
         ratings_df,
@@ -103,15 +103,13 @@ class GHRSDataset(pl.LightningDataModule):
         random_state=1
       )
 
-    # IMDB-ID to TMDB-ID is take too long so I will use TMDB-ID temporarily
-    # ratings_df['MID'] = self.tmdb_api.get_tmdb_ids(ratings_df['MID'].values)
     db_users, db_ratings = self.__get_db_data()
     
     # Merge DB and MovieLens
     users_df = pd.concat([users_df, db_users], axis=0)
     ratings_df = pd.concat([ratings_df, db_ratings], axis=0)
 
-    if self.CFG['sample_rate'] == 0.: # Use only DB Data
+    if self.CFG['sample_rate'] == 0. and not self.CFG['train_ae']: # Use only DB Data
       users_df = db_users
       ratings_df = db_ratings
 
@@ -123,15 +121,9 @@ class GHRSDataset(pl.LightningDataModule):
     self.GraphFeature = GraphFeature(ratings_df, users_df)
     self.GraphFeature_df = self.GraphFeature()
 
-    print(self.GraphFeature_df)
-    print(len(self.GraphFeature_df.columns))
-
     whole_x = torch.Tensor(np.array(self.GraphFeature_df.values[:, 1:], dtype=np.float32))
     whole_y = torch.Tensor(self.GraphFeature_df.index.to_list())
 
-    print(whole_x[0].shape)
-    print(whole_y.shape)
-    
     self.whole_dataset = TensorDataset(whole_x, whole_y)
 
     self.train_set, self.valid_set = random_split(self.whole_dataset, [(1 - self.CFG['val_rate']), self.CFG['val_rate']])

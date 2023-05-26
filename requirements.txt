@@ -9,6 +9,8 @@ pytorch-lightning>=2
 wandb
 python-dotenv
 mysql-connector-python
+fastapi
+uvicorn
 # pickle
 
 # networkx

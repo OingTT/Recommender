@@ -6,17 +6,18 @@ from apps.arg_parser import get_args
 
 cfgs = get_args()
 
-if not cfgs['debug']:
-  wandb.login()
+# if not cfgs['debug']:
+#   wandb.login()
 
-ghrs = GHRS(CFG=cfgs)
-ghrs.trainAutoEncoder()
+# ghrs = GHRS(CFG=cfgs)
+# ghrs.trainAutoEncoder()
 
-print("Predict Start")
+# print("Predict Start")
 
 from datetime import datetime
 
 start = datetime.now()
+ghrs = GHRS(CFG=cfgs)
 prediction = ghrs.predict("clhkairuv0000mn08gt2yvi5b")
 end = datetime.now()
 print(end - start)
