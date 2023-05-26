@@ -19,7 +19,7 @@ class GraphFeature_GraphTool(GraphFeature.GraphFeature):
         (el[1], el[0])
       ])
     
-    self.G.save('./preprocessed_data/graph.gt')
+    # self.G.save('./preprocessed_data/graph.gt')
 
   def VPM2dict(self, vpm: VertexPropertyMap) -> dict:
     '''
