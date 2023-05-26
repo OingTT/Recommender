@@ -10,7 +10,7 @@ import apps.GHRS.GraphFeature.GraphFeature as GraphFeature
 from apps.GHRS.GraphFeature.GraphFeature import TimeTaken
 
 class GraphFeature_RAPIDS(GraphFeature.GraphFeature):
-  def _getEdgeList(self) -> None:
+  def _addGraphEdges(self) -> None:
     self.G = nx.Graph()
 
     for el in tqdm(self.edge_list, desc='_getGraph::add_edge', total=1655185):

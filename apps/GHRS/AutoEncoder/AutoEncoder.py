@@ -69,7 +69,7 @@ class AutoEncoder(pl.LightningModule):
 
     def __common_step(self, batch: Tuple[Tensor], batch_idx: int) -> Tuple[Tensor, Tensor, Tensor]:
       x = batch[0]
-      x = x[:, 1:] # Remove UID
+      x = x[:, 0:]
       x = x.reshape(x.size(0), -1)
       encoded, decoded = self.forward(x)
       loss = self.loss_fn(decoded, x)
@@ -93,7 +93,7 @@ class AutoEncoder(pl.LightningModule):
     def predict_step(self, batch: Tuple[Tensor], batch_idx: int, dataloader_idx: int = 0) -> Tuple[pd.DataFrame, ...]:
       x = batch[0]
       UID = x[:, 0].int() # UID
-      x = x[:, 1:] # Remove UID
+      x = x[:, 0:] # Remove UID
       x = x.reshape(x.size(0), -1)
       encoded, decoded = self.forward(x)
       loss = self.loss_fn(decoded, x)

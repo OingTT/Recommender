@@ -78,6 +78,9 @@ def len_reviews_by_email(dbLoader: DataBaseLoader, userEmail):
 
 
 dbLoader = DataBaseLoader()
+
+print(dbLoader._test('SELECT id FROM User WHERE name="김민재"'))
+
 # len_reviews_by_name(dbLoader, '박준서')
 # len_reviews_by_name(dbLoader, '이정준')
 # len_reviews_by_name(dbLoader, '김종인')
@@ -86,21 +89,21 @@ dbLoader = DataBaseLoader()
 # len_reviews_by_name(dbLoader, 'dong')
 # len_reviews_by_name(dbLoader, '박다영')
 
-reviews = getAllReviews(dbLoader)
-print(f'# of all Review: {len(reviews)}')
+# reviews = getAllReviews(dbLoader)
+# print(f'# of all Review: {len(reviews)}')
 
-users = getAllUsers(dbLoader)
-print(f'# of all User: {len(users)}')
+# users = getAllUsers(dbLoader)
+# print(f'# of all User: {len(users)}')
 
-cnt_review_each = list()
+# cnt_review_each = list()
 
-for uid in users['UID']:
-  review_by = reviews[reviews['UID'] == uid]
-  cnt_review_each.append({
-    'UID': uid,
-    'CNT': len(review_by)
-  })
+# for uid in users['UID']:
+#   review_by = reviews[reviews['UID'] == uid]
+#   cnt_review_each.append({
+#     'UID': uid,
+#     'CNT': len(review_by)
+#   })
 
-cnt_review_each_df = pd.DataFrame().from_records(cnt_review_each, columns=['UID', 'CNT'])
+# cnt_review_each_df = pd.DataFrame().from_records(cnt_review_each, columns=['UID', 'CNT'])
 
-print(cnt_review_each_df.sort_values('CNT', ascending=False))
+# print(cnt_review_each_df.sort_values('CNT', ascending=False))

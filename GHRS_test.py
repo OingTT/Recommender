@@ -17,7 +17,7 @@ print("Predict Start")
 from datetime import datetime
 
 start = datetime.now()
-prediction = ghrs.predict("33")
+prediction = ghrs.predict("clhkairuv0000mn08gt2yvi5b")
 end = datetime.now()
 print(end - start)
 print(prediction)

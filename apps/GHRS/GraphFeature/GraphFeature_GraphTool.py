@@ -12,13 +12,14 @@ from apps.GHRS.GraphFeature.GraphFeature import TimeTaken
 class GraphFeature_GraphTool(GraphFeature.GraphFeature):
   def _addGraphEdges(self) -> None:
     self.G = Graph()
-
     for el in tqdm(self.edge_list, desc='_getGraph::add_edge', total=1655185):
       self.G.add_edge_list([
         (el[0], el[0]),
         (el[0], el[1]),
         (el[1], el[0])
       ])
+    
+    self.G.save('./preprocessed_data/graph.gt')
 
   def VPM2dict(self, vpm: VertexPropertyMap) -> dict:
     '''
@@ -39,6 +40,17 @@ class GraphFeature_GraphTool(GraphFeature.GraphFeature):
     for v in self.G.vertices():
       converted.update({
         int(v): float(BC[0][int(v)])
+      })
+    return converted
+  
+  def EC2dict(self, EC: tuple[VertexPropertyMap]):
+    '''
+    Convert Graph-tool's EigenValue Centrality to Dictionary
+    '''
+    converted = dict()
+    for v in self.G.vertices():
+      converted.update({
+        int(v): float(EC[1][int(v)])
       })
     return converted
   
@@ -73,5 +85,5 @@ class GraphFeature_GraphTool(GraphFeature.GraphFeature):
   @TimeTaken
   def _calcEigenvectorCentrality(self) -> None:
     ec = centrality.eigenvector(self.G)
-    ec_dict = self.VPM2dict(ec)
+    ec_dict = self.EC2dict(ec)
     self.graphFeature2DataFrame('EC', ec_dict)

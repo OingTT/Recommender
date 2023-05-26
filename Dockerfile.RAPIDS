@@ -1,10 +1,11 @@
-FROM rapidsai/rapidsai:cuda11.8-base-ubuntu20.04-py3.10
+FROM rapidsai/rapidsai:21.08-cuda11.2-runtime-ubuntu20.04-py3.8
 
 WORKDIR /workdir
 
-# Set Timezone to Asia/Seoul
+# Set Timezone to Asia/Seoul & Install essential packages
 ENV TZ=Asia/Seoul
-RUN apt-get -y update &&\
+RUN apt-key adv --keyserver keyserver.ubuntu.com --recv-keys A4B469963BF863CC &&\
+  apt-get -y update &&\
   apt-get -yq --no-install-recommends install tzdata \
   software-properties-common \
   python3-software-properties &&\
@@ -17,11 +18,10 @@ RUN apt-get -y update &&\
 COPY ./requirements.txt ./requirements.txt
 
 # Install Pytorch and requirements
-RUN python -m pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu118 &&\
-  python -m pip install -r requirements.txt &&\
-  python -m pip install networkx
-
-
+RUN /opt/conda/envs/rapids/bin/python -m pip \
+  install torch==1.7.1+cu110 torchvision==0.8.2+cu110 -f https://download.pytorch.org/whl/torch_stable.html &&\
+  /opt/conda/envs/rapids/bin/python -m pip install -r requirements.txt &&\
+  /opt/conda/envs/rapids/bin/python -m pip install networkx
 
 # FROM nvidia/cuda:11.8.0-cudnn8-runtime-ubuntu20.04
 

@@ -18,3 +18,7 @@ def load_pickle(path):
     return False
   with open(path, 'rb') as f:
     return pickle.load(f)
+  
+def print_log(CFG: dict, *values, **kargs):
+  if CFG['debug']:
+    print(values, kargs)

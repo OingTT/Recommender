@@ -40,3 +40,9 @@ docker build -t recommender .
 docker rm recommender && docker run --name recommender --gpus all -it -v .:/workdir recommender
 ## Without volume
 docker rm recommender && docker run --name recommender --gpus all -it recommender
+
+docker run --name recommender --shm-size=1g --ulimit memlock=-1 --gpus all -it -v .:/workdir recommender-rapids
+
+python GHRS_test.py --debug --latent-dim 8 --max-epoch 2
+
+sudo /home/user/anaconda3/envs/gt/bin/python GHRS_test.py --debug --latent-dim 8 --max-epoch 2 --sample-rate 0

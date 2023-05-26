@@ -14,24 +14,15 @@ def TimeTaken(func):
   def wrapper(*args, **kargs):
     startTime = time()
     print(func.__name__, 'begin at {}'.format(startTime))
-    func(*args, **kargs)
+    func_res = func(*args, **kargs)
     endTime = time()
     print(func.__name__, 'end at {}'.format(endTime))
     print(func.__name__, 'Taken {}/Sec'.format(endTime - startTime))
-    return func
+    return func_res
   return wrapper
 
 class GraphFeature(metaclass=ABCMeta):
   preprocessed_data_dir = './preprocessed_data'
-  
-  # graphFeatures = list()
-  # def addGraphFeatureWrapper(self, func):
-  #   def wrapper(*args, **kargs):
-  #     func(*args, **kargs)
-  #     graphFeatureName = func.__name__.replace('_calc', '')
-  #     self.graphFeatures.append(graphFeatureName)
-  #     return func
-  #   return wrapper
 
   def __init__(self, ratings_df: pd.DataFrame, users_df: pd.DataFrame, is_pred: bool=True):
     self.ratings = ratings_df
@@ -40,7 +31,7 @@ class GraphFeature(metaclass=ABCMeta):
 
   def __call__(self, alpha_coef: float=0.005) -> pd.DataFrame:
     graphFeature_df_path = os.path.join(self.preprocessed_data_dir, 'graphFeature.pkl')
-    self.graphFeature_df = load_pickle(graphFeature_df_path)
+    # self.graphFeature_df = load_pickle(graphFeature_df_path)
     self.graphFeature_df = None
     if not isinstance(self.graphFeature_df, pd.DataFrame):
       self._getGraph(alpha_coef=alpha_coef)
@@ -73,17 +64,6 @@ class GraphFeature(metaclass=ABCMeta):
   def graphFeature2DataFrame(self, col_name: str, graph_feature: pd.Series) -> None:
     self.users_df[col_name] = self.users_df.index.map(graph_feature)
     self.users_df[col_name] /= float(self.users_df[col_name].max())
-
-  def _getGraphFeature(self) -> None:
-    self._calcPagerank()
-    self._calcDegreeCentrality()
-    self._calcClosenessCentrality()
-    self._calcBetweennessCentrality()
-    self._calcLoadCentrality()
-    self._calcAverageNeighborDegree()
-    graphFeature_df = self.users_df[self.users_df.columns[0:]]
-    graphFeature_df.fillna(0, inplace=True)
-    self.graphFeature_df = graphFeature_df
 
   @abstractmethod
   def _getGraphFeatures(self) -> pd.DataFrame:

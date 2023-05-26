@@ -28,37 +28,25 @@ class GHRSDataset(pl.LightningDataModule):
     super(GHRSDataset, self).__init__()
     self.movieLensDir = movieLensDir
     self.CFG = CFG
-    # self.batch_size = self.
-    # self.num_workers = num_workers
-    # self.val_rate = val_rate
-    # self.is_pred = is_pred
     self.dataBaseLoader = DataBaseLoader
     self.tmdb_api = TMDB()
     self.__prepare_data()
 
   def __len__(self):
     '''
-    Return dim of datasets 'feature' (except UID)
+    Return dim of datasets 'features' (except UID)
     '''
-    return self.whole_dataset.shape[1] - 1 # except UID
+    # return len(self.GraphFeature_df.columns) - 1 # except UID
+    return 21
 
   def __convert2Categorical(self, df_X: pd.DataFrame, _X: str) -> pd.DataFrame:
-    values = np.array(df_X[_X])
-    # Encode to integer
-    labelEncoder = LabelEncoder()
-    integer_encoded = labelEncoder.fit_transform(values)
-    # Encode to binary
-    onehot_encoder = OneHotEncoder(sparse_output=False)
-    integer_encoded = integer_encoded.reshape(len(integer_encoded), 1)
-    onehot_encoded = onehot_encoder.fit_transform(integer_encoded)
-    df_X = df_X.drop(columns=_X)
-    for j in range(integer_encoded.max() + 1):
-      df_X.insert(loc=j + 1, column=str(_X) + str(j + 1), value=onehot_encoded[:, j])
+    df_X = pd.get_dummies(df_X, columns=[_X], dummy_na=True)
+    df_X = df_X.drop(columns=f'{_X}_nan')
     return df_X
 
   def __preprocess_users_df(self, users_df: pd.DataFrame) -> None:
     for occupation in OCCUPATION_MAP.items(): # Apply occupation reduction
-      users_df['Occupation'] = users_df['Occupation'].replace(occupation[1], occupation[0])
+      users_df['Occupation'] = users_df['Occupation'].replace(occupation[0], occupation[1])
     users_df = self.__convert2Categorical(users_df, 'Occupation')
     users_df = self.__convert2Categorical(users_df, 'Gender')
     age_bins = [0, 10, 20, 30, 40, 50, 100]
@@ -75,7 +63,7 @@ class GHRSDataset(pl.LightningDataModule):
                           ratings_df: pd.DataFrame,
                           sample_ratio: float=0.3,
                           random_state: int=None) -> Tuple[pd.DataFrame, pd.DataFrame]:
-    sample_len = int(len(users_df) * 0.01)
+    sample_len = int(len(users_df) * sample_ratio)
     sampled_users_df = users_df.sample(sample_len, random_state=random_state)
     sampled_ratings_df = ratings_df[ratings_df['UID'].isin(sampled_users_df['UID'])]
     return sampled_users_df, sampled_ratings_df
@@ -87,7 +75,7 @@ class GHRSDataset(pl.LightningDataModule):
       engine='python',
       names=['UID', 'Gender', 'Age', 'Occupation', 'Zip'],
       dtype={
-        'UID': 'uint8',
+        'UID': 'str',
         'Gender': 'str',
         'Age': 'uint8',
         'Occupation': 'uint8',
@@ -100,18 +88,18 @@ class GHRSDataset(pl.LightningDataModule):
       engine='python',
       names=['UID', 'MID', 'Rating', 'Timestamp'],
       dtype={
-        'UID': 'uint8',
+        'UID': 'str',
         'MID': 'uint16',
         'Rating': 'uint8',
         'Timestamp': 'uint64'
       }
     )
     # Sample MovieLens
-    if self.CFG['sample_ratio'] != 1.: # No sampling
+    if self.CFG['sample_rate'] != 1.: # Use whole movie lens sets
       users_df, ratings_df = self.__sample_movie_lens(
         users_df,
         ratings_df,
-        sample_ratio=self.CFG['sample_ratio'],
+        sample_ratio=self.CFG['sample_rate'],
         random_state=1
       )
 
@@ -123,22 +111,26 @@ class GHRSDataset(pl.LightningDataModule):
     users_df = pd.concat([users_df, db_users], axis=0)
     ratings_df = pd.concat([ratings_df, db_ratings], axis=0)
 
-    if self.CFG['sample_ratio'] == 0.: # Use only DB Data
+    if self.CFG['sample_rate'] == 0.: # Use only DB Data
       users_df = db_users
       ratings_df = db_ratings
 
-    print(users_df)
+    self.users_df = users_df
+    self.ratings_df = ratings_df
+
     users_df = self.__preprocess_users_df(users_df=users_df)
-    print(users_df)
 
     self.GraphFeature = GraphFeature(ratings_df, users_df)
     self.GraphFeature_df = self.GraphFeature()
+
     print(self.GraphFeature_df)
-    
-    whole_x = torch.Tensor(self.GraphFeature_df.values[:, 1:])
-    whole_y = torch.Tensor(self.GraphFeature_df.values[:, 0])
-    
-    print(whole_y)
+    print(len(self.GraphFeature_df.columns))
+
+    whole_x = torch.Tensor(np.array(self.GraphFeature_df.values[:, 1:], dtype=np.float32))
+    whole_y = torch.Tensor(self.GraphFeature_df.index.to_list())
+
+    print(whole_x[0].shape)
+    print(whole_y.shape)
     
     self.whole_dataset = TensorDataset(whole_x, whole_y)
 
