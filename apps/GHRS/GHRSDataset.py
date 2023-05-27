@@ -17,7 +17,8 @@ from .GraphFeature.GraphFeature_GraphTool import GraphFeature_GraphTool as Graph
 
 class GHRSDataset(pl.LightningDataModule):
   '''
-  TODO X: Features, Y: UID ?
+  Training & Validation Step  : MovieLens + DB
+  Predction Step              : Only DB
   '''
   def __init__(
       self,
@@ -26,15 +27,15 @@ class GHRSDataset(pl.LightningDataModule):
       DataBaseLoader: DataBaseLoader=None,
     ) -> None:
     super(GHRSDataset, self).__init__()
-    self.movieLensDir = movieLensDir
     self.CFG = CFG
+    self.movieLensDir = movieLensDir
     self.dataBaseLoader = DataBaseLoader
-    self.tmdb_api = TMDB()
     self.__prepare_data()
 
   def __len__(self):
     '''
     Return dim of datasets 'features' (except UID)
+    AutoEncoder객체 생성할 때는 GraphFeature들이 구해지지 않은 상태라 문제
     '''
     # return len(self.GraphFeature_df.columns) - 1 # except UID
     return 21
@@ -94,24 +95,28 @@ class GHRSDataset(pl.LightningDataModule):
         'Timestamp': 'uint64'
       }
     )
+
+    # DB Data
+    db_users, db_ratings = self.__get_db_data()
+
     # Sampling MovieLens: While training autoencoder model use whole dataset which including MovieLens
-    if self.CFG['sample_rate'] != 1. or not self.CFG['train_ae']:
+    if self.CFG['sample_rate'] != 1.:
       users_df, ratings_df = self.__sample_movie_lens(
         users_df,
         ratings_df,
         sample_ratio=self.CFG['sample_rate'],
         random_state=1
       )
-
-    db_users, db_ratings = self.__get_db_data()
     
-    # Merge DB and MovieLens
-    users_df = pd.concat([users_df, db_users], axis=0)
-    ratings_df = pd.concat([ratings_df, db_ratings], axis=0)
-
-    if self.CFG['sample_rate'] == 0. and not self.CFG['train_ae']: # Use only DB Data
+    # While prediction use only DB data
+    if self.CFG['sample_rate'] == 0.: # Use only DB Data
       users_df = db_users
       ratings_df = db_ratings
+
+    # Merge DB and MovieLens
+    if self.CFG['sample_rate'] != 0:
+      users_df = pd.concat([users_df, db_users], axis=0)
+      ratings_df = pd.concat([ratings_df, db_ratings], axis=0)
 
     self.users_df = users_df
     self.ratings_df = ratings_df
@@ -121,29 +126,41 @@ class GHRSDataset(pl.LightningDataModule):
     self.GraphFeature = GraphFeature(ratings_df, users_df)
     self.GraphFeature_df = self.GraphFeature()
 
-    whole_x = torch.Tensor(np.array(self.GraphFeature_df.values[:, 1:], dtype=np.float32))
-    whole_y = torch.Tensor(self.GraphFeature_df.index.to_list())
-
-    self.whole_dataset = TensorDataset(whole_x, whole_y)
-
-    self.train_set, self.valid_set = random_split(self.whole_dataset, [(1 - self.CFG['val_rate']), self.CFG['val_rate']])
+    whole_dataset = self.__getTensorDataset(self.GraphFeature_df)
+    self.whole_dataset = whole_dataset
   
+    train_set, valid_set = random_split(whole_dataset, [(1 - self.CFG['val_rate']), self.CFG['val_rate']])
+    self.train_set, self.valid_set = train_set, valid_set
+  
+
+  def __getTensorDataset(self, graphFeature: pd.DataFrame) -> TensorDataset:
+    whole_x = torch.Tensor(np.array(graphFeature.values[:, 1:], dtype=np.float32))
+    whole_y = torch.Tensor(graphFeature.index.to_list())
+
+    whole_dataset = TensorDataset(whole_x, whole_y)
+    
+    return whole_dataset 
+
   def __get_db_data(self) -> Tuple[pd.DataFrame, pd.DataFrame]:
-    '''
-    Movie Lens Dataset을 사용하는 이유가 Cold start problem 해결하기 위함이므로
-    데이터가 충분히 많은 경우에는 Movie Lens Dataset을 사용하지 않고
-    DataBaseLoader만을 사용해 데이터를 불러올 예정.
-    '''
     assert self.dataBaseLoader is not None, 'GHRSDataset.dataBaseLoader must be set'
     db_users = self.dataBaseLoader.getAllUsers()
     db_ratings = self.dataBaseLoader.getAllReviews()
     return db_users, db_ratings
 
   def train_dataloader(self):
+    '''
+    MovieLens + DB Data splitted
+    '''
     return DataLoader(self.train_set, batch_size=self.CFG['batch_size'], num_workers=self.CFG['num_workers'], shuffle=True)
   
   def val_dataloader(self):
+    '''
+    MovieLens + DB Data splitted
+    '''
     return DataLoader(self.valid_set, batch_size=self.CFG['batch_size'], num_workers=self.CFG['num_workers'], shuffle=False)
   
   def predict_dataloader(self):
+    '''
+    DB Data only
+    '''
     return DataLoader(self.whole_dataset, batch_size=self.CFG['batch_size'], num_workers=self.CFG['num_workers'], shuffle=False)

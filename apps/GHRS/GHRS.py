@@ -17,7 +17,10 @@ from apps.GHRS.AutoEncoder.AutoEncoder import AutoEncoder
 class GHRS:
   '''
   TODO Training Step과 Prediction Step을 분리해야함
+  __call__ => Prediction & Recommendation
+  training => Train Autoencoder & Save Best model to pretrained_models
   '''
+  autoEncoder = None
   def __init__(
       self,
       datasetDir: str = './ml-1m',
@@ -31,7 +34,7 @@ class GHRS:
       movieLensDir=self.datasetDir,
       DataBaseLoader=DataBaseLoader(),
     )
-    loggers = self.__getLoggers()
+    loggers = self.__init_loggers()
     self.trainer = pl.Trainer(
       accelerator=self.CFG['device'],
       max_epochs=self.CFG['max_epoch'],
@@ -43,8 +46,6 @@ class GHRS:
 
   def __init_model_checkpoint(self) -> List[ModelCheckpoint]:
     pretrained_model_path = './pretrained_model'
-    if not self.CFG['train_ae']:
-      return None
     if len(os.listdir(pretrained_model_path)) != 0:
       for item in os.listdir(pretrained_model_path):
         if os.path.isfile(os.path.join(pretrained_model_path, item)):
@@ -57,12 +58,35 @@ class GHRS:
       dirpath=pretrained_model_path,
       filename="Pretrained-{epoch:02d}-{valid_loss:.4f}",
     )]
+  
+  def __init_loggers(self) -> List:
+    if not self.CFG['log']:
+      return list()
+
+    log_dir = self.CFG['log_dir']
+    modelName = f'GHRS_{datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S")}'
+    return [
+      CSVLogger(
+        save_dir=log_dir,
+        name=modelName,
+      ),
+      TensorBoardLogger(
+        save_dir=log_dir,
+        name=modelName,
+        log_graph=True,
+      ),
+      WandbLogger(
+        project=f'GHRS',
+        name=modelName,
+      )
+    ]
 
   def __load_best_model(self):
     chkps = dict()
-    if not os.path.exists("./pretrained_model"):
-      os.mkdir("./pretrained_model")
-    for chkp in os.listdir("./pretrained_model"):
+    pretrained_model_dir: str = self.CFG['pretrained_model_dir']
+    if not os.path.exists(pretrained_model_dir):
+      os.mkdir(pretrained_model_dir)
+    for chkp in os.listdir(pretrained_model_dir):
       if not chkp.startswith('Pretrained-epoch'):
         continue
       splited = chkp.split('-')
@@ -73,32 +97,29 @@ class GHRS:
     min_epoch = [epoch for epoch, loss in chkps.items() if loss == min_loss][0]
     if len(str(min_epoch)) == 1:
       min_epoch = f'0{min_epoch}'
-    best_model = f'./pretrained_model/Pretrained-epoch={min_epoch}-valid_loss={min_loss:.4f}.ckpt'
+
+    best_model = os.path.join(pretrained_model_dir, 'Pretrained-epoch={min_epoch}-valid_loss={min_loss:.4f}.ckpt')
 
     return AutoEncoder.load_from_checkpoint(
       checkpoint_path=best_model,
     )
 
-  def __call__(self) -> Tuple[pd.DataFrame, ...]:
+  def __call__(self, UID: str) -> Tuple[pd.DataFrame, ...]:
     '''
     this function assume that autoencoder is already trained
     '''
-    autoEncoder = self.__load_best_model()
-    prediction: list = self.trainer.predict(autoEncoder, datamodule=self.ghrsDataset)
-    prediction: pd.DataFrame = pd.concat(prediction, axis=0)
-    clustered = self.cluster(encoded_df=prediction)
-    grouped = clustered.groupby('cluster_label', as_index=False)
-    return grouped.groups
+    return self.predict(UID=UID)
   
   def predict(self, UID: str) -> List[dict]:
     '''
     return Dataframe of mean rating about target user's cluster
     columns: ['MID', 'Rating']
     '''
-    autoEncoder = self.__load_best_model()
+    if self.autoEncoder is None:
+      self.autoEncoder = self.__load_best_model()
 
     # prediction => prediction of autoencoder for each batch
-    prediction: list = self.trainer.predict(autoEncoder, datamodule=self.ghrsDataset)
+    prediction: list = self.trainer.predict(self.autoEncoder, datamodule=self.ghrsDataset)
     # prediction => prediction of autoencoder for all data
     prediction: pd.DataFrame = pd.concat(prediction, axis=0)
     # clustered => prediction with cluster label
@@ -151,34 +172,15 @@ class GHRS:
       mid = rating_mean['MID'].iloc[i]
       rating = rating_mean['Rating'].iloc[i]
       results.append(dict(
-        MID=str(mid),
-        Rating=float(rating)
+        MID=int(mid),
+        Rating=int(rating)
       ))
     return results
-    
-  def __getLoggers(self) -> list:
-    if not self.CFG['log']:
-      return list()
-
-    log_dir = f'./train_logs'
-    modelName = f'GHRS_{datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S")}'
-    return [
-      CSVLogger(
-        save_dir=log_dir,
-        name=modelName,
-      ),
-      TensorBoardLogger(
-        save_dir=log_dir,
-        name=modelName,
-        log_graph=True,
-      ),
-      WandbLogger(
-        project=f'GHRS',
-        name=modelName,
-      )
-    ]
-
-  def trainAutoEncoder(self):
+  
+  def train(self):
+    '''
+    Train AutoEncoder model
+    '''
     self.autoEncoder = AutoEncoder(len(self.ghrsDataset), self.CFG['latent_dim'])
     self.trainer.fit(
       self.autoEncoder,
@@ -188,7 +190,10 @@ class GHRS:
   def predictAutoencoder(self):
     return self.trainer.predict(self.autoEncoder, self.ghrsDataset)
   
-  def cluster(self, encoded_df: pd.DataFrame):
+  def cluster(self, encoded_df: pd.DataFrame) -> pd.DataFrame:
+    '''
+    return DataFrame which include cluster labels
+    '''
     cluster = Cluster()
     cluster_label = cluster(encoded_df=encoded_df)
     encoded_df['cluster_label'] = cluster_label

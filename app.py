@@ -1,4 +1,5 @@
-from apps.arg_parser import get_args
+import uvicorn
+
 from apps.GHRS.GHRS import GHRS
 
 from fastapi import FastAPI
@@ -18,21 +19,12 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-cfgs = {
-    'debug': False,
-    'log': False,
-    'device': 'gpu',
-    'train_ae': False,
-    'latent_dim': 8,
-    'batch_size': 1024,
-    'num_workers': 8,
-    'val_rate': 0.2,
-    'max_epoch': 100,
-    'sample_rate': 0,
-}
 
+
+ghrs = GHRS(CFG=cfgs)
 @app.get("/recommendation/{uid}")
 async def recommend_movie(uid):
-    ghrs = GHRS(CFG=cfgs)
-
     return ghrs.predict(uid)
+
+if __name__=='__main__':
+    uvicorn.run('app:app', host='0.0.0.0', port=8888, reload=True)

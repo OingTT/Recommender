@@ -8,12 +8,9 @@ class Cluster():
       ...
 
     def __call__(self, encoded_df: pd.DataFrame) -> None:
-      '''
-      encoded_df shoud have UID column
-      '''
-      # except_uid_df = encoded_df.drop(columns=['UID'])
       optimalK = self._findOptimalKWithSilhouetteScore(encoded_df, 2, 30)
-      optimalK = 8
+      # optimalK = 8
+      print(f"Clustering with K={optimalK}")
       clustering_result = self.KMeans(df=encoded_df, K=optimalK, method='k-means++')
       return clustering_result
 
@@ -43,29 +40,3 @@ class Cluster():
       elbow_index = diffs.index(max(diffs)) + 1
       bestK = elbow_index + 1
       return bestK
-
-    def DBSCAN(self, df: pd.DataFrame, eps: float=0.3, min_samples: int=10) -> None:
-      return DBSCAN(eps=eps, min_samples=min_samples).fit_predict(df)
-
-
-# from sklearn.datasets import make_blobs
-# import matplotlib.pyplot as plt
-
-# X, y = make_blobs(n_samples=1000, centers=4, n_features=2, random_state=1)
-# df = pd.DataFrame(X, columns=['x', 'y'])
-# cluster = Cluster(df)
-# # df['label_dbscan'] = cluster.DBSCAN(eps=0.5, min_samples=10)
-
-
-# optimalK = cluster._findOptimalKWithSilhouetteScore(2, 30)
-# s_ = f'label_kmeans_S: {optimalK}'
-# df[s_] = cluster.KMeans(K=optimalK, method='k-means++')
-# optimalK = cluster._findOptimalKWithElbowMethod(2, 30)
-# e_ = f'label_kmeans_E: {optimalK}'
-# df[e_] = cluster.KMeans(K=optimalK, method='k-means++')
-
-# fig, axs = plt.subplots(1, 2)
-
-# df.plot.scatter(x='x', y='y', c=s_, colormap='viridis', ax=axs[0])
-# df.plot.scatter(x='x', y='y', c=e_, colormap='viridis', ax=axs[1])
-# plt.show()
