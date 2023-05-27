@@ -9,25 +9,26 @@ from typing import Tuple, List
 from pytorch_lightning.loggers import TensorBoardLogger, CSVLogger, WandbLogger
 from pytorch_lightning.callbacks import ModelCheckpoint
 
+from apps.Singleton import Singleton
 from apps.GHRS.GHRSDataset import GHRSDataset
 from apps.GHRS.Cluster.Cluster import Cluster
 from apps.GHRS.DataBaseLoader import DataBaseLoader
 from apps.GHRS.AutoEncoder.AutoEncoder import AutoEncoder
 
-class GHRS:
+class GHRS(metaclass=Singleton):
   '''
   TODO Training Step과 Prediction Step을 분리해야함
   __call__ => Prediction & Recommendation
   training => Train Autoencoder & Save Best model to pretrained_models
   '''
   autoEncoder = None
+
   def __init__(
       self,
-      datasetDir: str = './ml-1m',
       CFG: dict = None
     ):
-    self.datasetDir = datasetDir
     self.CFG = CFG
+    self.datasetDir = self.CFG['movie_lens_dir']
     modelCheckpoint = self.__init_model_checkpoint()
     self.ghrsDataset = GHRSDataset(
       CFG=self.CFG,
@@ -45,12 +46,11 @@ class GHRS:
     )
 
   def __init_model_checkpoint(self) -> List[ModelCheckpoint]:
-    pretrained_model_path = './pretrained_model'
+    pretrained_model_path = self.CFG['pretrained_model_dir']
     if len(os.listdir(pretrained_model_path)) != 0:
       for item in os.listdir(pretrained_model_path):
         if os.path.isfile(os.path.join(pretrained_model_path, item)):
           os.remove(os.path.join(pretrained_model_path, item))
-      os.mkdir(pretrained_model_path)
     return [ModelCheckpoint(
       save_top_k=10,
       monitor="valid_loss",
@@ -108,9 +108,9 @@ class GHRS:
     '''
     this function assume that autoencoder is already trained
     '''
-    return self.predict(UID=UID)
+    ...
   
-  def predict(self, UID: str) -> List[dict]:
+  def predict_movie(self, UID: str) -> List[dict]:
     '''
     return Dataframe of mean rating about target user's cluster
     columns: ['MID', 'Rating']

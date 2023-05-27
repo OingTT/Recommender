@@ -10,7 +10,9 @@ wandb
 python-dotenv
 mysql-connector-python
 fastapi
-uvicorn
+uvicorn[standard]
+tensorboard
+tensorboardX
 # pickle
 
 # networkx

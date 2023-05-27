@@ -3,31 +3,23 @@ import mysql.connector
 
 import pandas as pd
 
-from apps.apis.TMDB import TMDB
 from datetime import datetime
 from dotenv import load_dotenv
 
-class DataBaseLoader():
-  __instance__ = None
+from apps.Singleton import Singleton
+from apps.apis.TMDB import TMDB
 
-  @staticmethod
-  def getInstance() -> 'DataBaseLoader':
-    if DataBaseLoader.__instance__ is None:
-      return DataBaseLoader()
-    return DataBaseLoader.__instance__
+class DataBaseLoader(metaclass=Singleton):
 
   def __init__(self, ):
-    if self.__instance__ is not None:
-      raise Exception("Singleton class, use get_instance() method instead")
-    else:
-      load_dotenv()
-      self.HOST = os.getenv("WHATSUBS_DB_HOST")
-      self.USERNAME = os.getenv("WHATSUBS_DB_USERNAME")
-      self.PASSWORD = os.getenv("WHATSUBS_DB_PASSWORD")
-      self.DATABASE = os.getenv("WHATSUBS_DB_DATABASE")
-      self.connection = None
-      self.cursor = None
-      self.TMDB_API = TMDB()
+    load_dotenv()
+    self.HOST = os.getenv("WHATSUBS_DB_HOST")
+    self.USERNAME = os.getenv("WHATSUBS_DB_USERNAME")
+    self.PASSWORD = os.getenv("WHATSUBS_DB_PASSWORD")
+    self.DATABASE = os.getenv("WHATSUBS_DB_DATABASE")
+    self.connection = None
+    self.cursor = None
+    self.TMDB_API = TMDB()
 
   def __connect(self, ) -> None:
     self.connection = mysql.connector.connect(
