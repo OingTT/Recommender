@@ -86,7 +86,6 @@ class DataBaseLoader(metaclass=Singleton):
         })
     return pd.DataFrame().from_records(reviews)
 
-
   def getAllUsers(self, ) -> pd.DataFrame:
     query = 'SELECT * FROM User'
     response = self.__execute(query)
@@ -112,6 +111,9 @@ class DataBaseLoader(metaclass=Singleton):
         'Zip': None,
       })
     return pd.DataFrame().from_records(users)
+  
+  def getAllSubscription(self, ) -> pd.DataFrame:
+    ...
   
   def findUserByUserId(self, uid: str) -> dict:
     return self.__execute('SELECT * FROM User WHERE id=%s;', uid)

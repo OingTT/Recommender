@@ -159,6 +159,5 @@ cython_debug/
 #  option (not recommended) you can uncomment the following to ignore the entire idea folder.
 #.idea/
 
-preprocessed_data
-PretrainedModel
-train_logs
+train_log
+wandb

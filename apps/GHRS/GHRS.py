@@ -45,12 +45,17 @@ class GHRS(metaclass=Singleton):
       log_every_n_steps=1,
     )
 
-  def __init_model_checkpoint(self) -> List[ModelCheckpoint]:
+  def __delete_model_check_points(self) -> None:
     pretrained_model_path = self.CFG['pretrained_model_dir']
     if len(os.listdir(pretrained_model_path)) != 0:
       for item in os.listdir(pretrained_model_path):
         if os.path.isfile(os.path.join(pretrained_model_path, item)):
           os.remove(os.path.join(pretrained_model_path, item))
+
+  def __init_model_checkpoint(self) -> List[ModelCheckpoint]:
+    pretrained_model_path = self.CFG['pretrained_model_dir']
+    if self.CFG['train_ae']:
+      self.__delete_model_check_points()
     return [ModelCheckpoint(
       save_top_k=10,
       monitor="valid_loss",

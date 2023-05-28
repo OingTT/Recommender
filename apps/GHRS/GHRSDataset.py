@@ -34,11 +34,10 @@ class GHRSDataset(pl.LightningDataModule):
 
   def __len__(self):
     '''
-    Return dim of datasets 'features' (except UID)
+    Return dim of datasets 'features' (exclude UID)
     AutoEncoder객체 생성할 때는 GraphFeature들이 구해지지 않은 상태라 문제
     '''
-    # return len(self.GraphFeature_df.columns) - 1 # except UID
-    return 21
+    return len(list(self.GraphFeature_df.columns)) - 1 # exclude UID
 
   def __convert2Categorical(self, df_X: pd.DataFrame, _X: str) -> pd.DataFrame:
     df_X = pd.get_dummies(df_X, columns=[_X], dummy_na=True)
@@ -54,8 +53,8 @@ class GHRSDataset(pl.LightningDataModule):
     labels = ['1', '2', '3', '4', '5', '6']
     users_df['bin'] = pd.cut(users_df['Age'], age_bins, labels=labels)
     users_df['Age'] = users_df['bin']
-    users_df = users_df.drop(columns='bin')
     users_df = self.__convert2Categorical(users_df, 'Age')
+    users_df = users_df.drop(columns='bin')
     users_df = users_df.drop(columns='Zip')
     return users_df
   
@@ -114,7 +113,7 @@ class GHRSDataset(pl.LightningDataModule):
       ratings_df = db_ratings
 
     # Merge DB and MovieLens
-    if self.CFG['sample_rate'] != 0:
+    if self.CFG['sample_rate'] != 0.:
       users_df = pd.concat([users_df, db_users], axis=0)
       ratings_df = pd.concat([ratings_df, db_ratings], axis=0)
 
@@ -123,7 +122,7 @@ class GHRSDataset(pl.LightningDataModule):
 
     users_df = self.__preprocess_users_df(users_df=users_df)
 
-    self.GraphFeature = GraphFeature(ratings_df, users_df)
+    self.GraphFeature = GraphFeature(users_df, ratings_df)
     self.GraphFeature_df = self.GraphFeature()
 
     whole_dataset = self.__getTensorDataset(self.GraphFeature_df)

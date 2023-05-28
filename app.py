@@ -24,9 +24,17 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-@app.get("/recommendation/{uid}")
+@app.get("/recommendation/movie/{uid}")
 async def recommend_movie(uid: str):
     return ghrs.predict_movie(uid)
+
+@app.get("/recommendation/tv/{uid}")
+async def recommend_tv(uid: str):
+    return ghrs.predict_tv(uid)
+
+@app.get("/recommendation/ott/{uid}")
+async def recommend_ott(uid: str):
+    return ghrs.predict_ott(uid)
 
 if __name__=='__main__':
     uvicorn.run('app:app', host='0.0.0.0', port=8888, reload=True)
