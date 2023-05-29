@@ -92,13 +92,7 @@ class AutoEncoder(pl.LightningModule):
     
     def predict_step(self, batch: Tuple[Tensor], batch_idx: int, dataloader_idx: int = 0) -> Tuple[pd.DataFrame, ...]:
       x = batch[0]
-      # UID = x[:, 0].int() # UID
-      x = x[:, 0:] # Remove UID
-      x = x.reshape(x.size(0), -1)
-      encoded, decoded = self.forward(x)
-      loss = self.loss_fn(decoded, x)
-      # columns = ['UID'] + ['encoded_{}'.format(i) for i in range(self.latent_dim)]
-      # encoded_df = pd.DataFrame(torch.cat([UID.unsqueeze(1), encoded], dim=1).cpu().numpy(), columns=columns)
+      encoded, decoded = self(x)
       columns = ['encoded_{}'.format(i) for i in range(self.latent_dim)]
       encoded_df = pd.DataFrame(encoded.cpu().numpy(), columns=columns)
       return encoded_df

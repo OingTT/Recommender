@@ -24,13 +24,9 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-@app.get("/recommendation/movie/{uid}")
-async def recommend_movie(uid: str):
-    return ghrs.predict_movie(uid)
-
-@app.get("/recommendation/tv/{uid}")
-async def recommend_tv(uid: str):
-    return ghrs.predict_tv(uid)
+@app.get("/recommendation/{contentType}/{uid}")
+async def recommend_movie(contentType: str, uid: str):
+    return ghrs.predict_content(contentType=contentType, UID=uid)
 
 @app.get("/recommendation/ott/{uid}")
 async def recommend_ott(uid: str):

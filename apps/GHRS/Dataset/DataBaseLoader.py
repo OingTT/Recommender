@@ -58,6 +58,27 @@ class DataBaseLoader(metaclass=Singleton):
     today = datetime.today()
     return today.year - birthday.year - ((today.month, today.day) < (birthday.month, birthday.day))
   
+  def getReviewsByContentType(self, contentType: str) -> pd.DataFrame:
+    query = 'SELECT * FROM Review WHERE CONTENT_TYPE = %s'
+    response = self.__execute(query, contentType)
+    reviews = list()
+    for row in response:
+      if row[3] == 'WATCHED':
+        continue
+      UID = row[0]
+      CONTENT_TYPE = row[1]
+      CONTENT_ID = row[2]
+      WATCH = row[3]
+      RATING = row[4]
+      reviews.append({
+        'UID': UID,
+        'CID': CONTENT_ID,
+        'Rating': RATING,
+        'ContentType': CONTENT_TYPE,
+        'Timestamp': None,
+      })
+    return pd.DataFrame().from_records(reviews)
+
   def getAllReviews(self) -> pd.DataFrame:
     query = 'SELECT * FROM Review'
     response = self.__execute(query)
@@ -113,7 +134,17 @@ class DataBaseLoader(metaclass=Singleton):
     return pd.DataFrame().from_records(users)
   
   def getAllSubscription(self, ) -> pd.DataFrame:
-    ...
+    query = 'SELECT * FROM Subscription'
+    response = self.__execute(query)
+    subscriptions = list()
+    for row in response:
+      UID = row[1]
+      SUBSCRIPTION = row[0]
+      subscriptions.append({
+        'UID': UID,
+        'Subscription': SUBSCRIPTION,
+      })
+    return pd.DataFrame().from_records(subscriptions)
   
   def findUserByUserId(self, uid: str) -> dict:
     return self.__execute('SELECT * FROM User WHERE id=%s;', uid)
