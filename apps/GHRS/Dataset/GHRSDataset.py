@@ -20,6 +20,11 @@ class GHRSDataset(pl.LightningDataModule):
   Training & Validation Step  : MovieLens + DB
   Predction Step              : Only DB
   '''
+  # __occupation_dummy_prefix
+  __GENDER_DUMMY_PREFIX: list = ['Gender_F', 'Gender_M']
+  __AGE_DUMMY_PREFIX: list = [i for i in range(0, 6)]
+  __OCCUPATION_DUMMY_PREFIX: list = ['Occupation_{}'.format(i) for i in range(11)]
+
   def __init__(
       self,
       CFG: dict,
@@ -69,9 +74,18 @@ class GHRSDataset(pl.LightningDataModule):
     return users_df, ratings_df
   
   def __get_db_data(self, contentType: str) -> Tuple[pd.DataFrame, pd.DataFrame]:
+    '''
+    contentType: 'MOVIE' or 'TV' or 'ALL'
+    '''
+    __available_content_type = ['MOVIE', 'TV', 'ALL']
     assert self.dataBaseLoader is not None, 'GHRSDataset.dataBaseLoader must be set'
+    if contentType not in __available_content_type:
+      raise ValueError('ContentType Error')
     db_users = self.dataBaseLoader.getAllUsers()
-    db_ratings = self.dataBaseLoader.getReviewsByContentType(contentType)
+    if contentType == 'ALL':
+      db_ratings = self.dataBaseLoader.getAllReviews()
+    else:
+      db_ratings = self.dataBaseLoader.getReviewsByContentType(contentType)
     return db_users, db_ratings
   
   def __sample_movie_lens(self,
@@ -85,17 +99,36 @@ class GHRSDataset(pl.LightningDataModule):
     return sampled_users_df, sampled_ratings_df
   
   def __convert2Categorical(self, df_X: pd.DataFrame, _X: str) -> pd.DataFrame:
-    df_X = pd.get_dummies(df_X, columns=[_X], dummy_na=True)
-    df_X = df_X.drop(columns=f'{_X}_nan')
-    return df_X
+    if _X == 'Occupation':
+      PREFIX = self.__OCCUPATION_DUMMY_PREFIX
+    elif _X == 'Gender':
+      PREFIX = self.__GENDER_DUMMY_PREFIX
+      df_X['Gender'] = df_X['Gender'].replace('F', '0')
+      df_X['Gender'] = df_X['Gender'].replace('M', '1')
+    elif _X == 'Age':
+      PREFIX = self.__AGE_DUMMY_PREFIX
 
-  def __preprocess_users_df(self, users_df: pd.DataFrame) -> None:
+    values = np.array(df_X[_X])
+    # integer encode
+    label_encoder = LabelEncoder()
+    label_encoder = label_encoder.fit([_ for _ in range(len(PREFIX))])
+    integer_encoded = label_encoder.transform(values)
+    # binary encode
+    onehot_encoder = OneHotEncoder(categories=[[_ for _ in range(len(PREFIX))]], sparse_output=False)
+    integer_encoded = integer_encoded.reshape(len(integer_encoded), 1)
+    onehot_encoded = onehot_encoder.fit_transform(integer_encoded)
+    df_temp = pd.DataFrame(onehot_encoded, columns=PREFIX)
+    df_X = df_X.drop(_X, axis=1)
+    df_X = pd.concat([df_X, df_temp], axis=1)
+    return df_X
+    
+  def __preprocess_users_df(self, users_df: pd.DataFrame) -> pd.DataFrame:
     for occupation in OCCUPATION_MAP.items(): # Apply occupation reduction
       users_df['Occupation'] = users_df['Occupation'].replace(occupation[0], occupation[1])
     users_df = self.__convert2Categorical(users_df, 'Occupation')
     users_df = self.__convert2Categorical(users_df, 'Gender')
     age_bins = [0, 10, 20, 30, 40, 50, 100]
-    labels = ['1', '2', '3', '4', '5', '6']
+    labels = ['0', '1', '2', '3', '4', '5']
     users_df['bin'] = pd.cut(users_df['Age'], age_bins, labels=labels)
     users_df['Age'] = users_df['bin']
     users_df = self.__convert2Categorical(users_df, 'Age')
@@ -113,24 +146,30 @@ class GHRSDataset(pl.LightningDataModule):
     
   def __prepare_data(self) -> None:
     # Get DB Data
-    users_df, ratings_df = self.__get_db_data()
+    users_df, ratings_df = self.__get_db_data('ALL')
     
+    ml_users_df, ml_ratings_df = self.__get_movie_lens()
+    self.ml_users_df, self.ml_ratings_df = ml_users_df, ml_ratings_df
     if self.CFG['sample_rate'] != 0. or self.CFG['train_ae']: # Use only DB Data
-      ml_users_df, ml_ratings_df = self.__get_movie_lens()
       ml_users_df, ml_ratings_df = self.__sample_movie_lens(
         ml_users_df,
         ml_ratings_df,
         sample_rate=self.CFG['sample_rate'],
         random_state=1
       )
-      users_df = pd.concat([users_df, ml_users_df], axis=1)
-      ratings_df = pd.concat([ratings_df, ml_ratings_df], axis=1)
+      users_df = pd.concat([users_df, ml_users_df], axis=0)
+      ratings_df = pd.concat([ratings_df, ml_ratings_df], axis=0)
+
+    users_df = users_df.reset_index()
 
     users_df = self.__preprocess_users_df(users_df=users_df)
 
+    if 'index' in users_df.columns.to_list():
+      users_df = users_df.drop(['index'], axis=1)
+
     self.users_df, self.ratings_df = users_df, ratings_df
 
-    self.GraphFeature = GraphFeature(users_df, ratings_df)
+    self.GraphFeature = GraphFeature(self.CFG, users_df, ratings_df)
     self.GraphFeature_df = self.GraphFeature()
 
     whole_dataset = self.__getTensorDataset(self.GraphFeature_df)

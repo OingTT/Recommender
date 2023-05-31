@@ -63,7 +63,7 @@ class DataBaseLoader(metaclass=Singleton):
     response = self.__execute(query, contentType)
     reviews = list()
     for row in response:
-      if row[3] == 'WATCHED':
+      if row[3] != 'WATCHED':
         continue
       UID = row[0]
       CONTENT_TYPE = row[1]
@@ -84,27 +84,20 @@ class DataBaseLoader(metaclass=Singleton):
     response = self.__execute(query)
     reviews = list()
     for row in response:
+      if row[3] != 'WATCHED':
+        continue
       UID = row[0]
       CONTENT_TYPE = row[1]
       CONTENT_ID = row[2]
       WATCH = row[3]
       RATING = row[4]
-      if WATCH != 'WATCHED':
-        continue
-      if CONTENT_TYPE == 'MOVIE':
-        '''
-        Movie Lens에는 TV Show에 대한 리뷰가 없으므로
-        TV Show에 대한 사용자 평가가 충분히 생기기 전 까지는
-        일단 영화에 대한 추천만 할 예정이므로
-        영화에 대한 Review만 추출
-        '''
-        MID = CONTENT_ID
-        reviews.append({
-          'UID': UID,
-          'MID': MID,
-          'Rating': RATING,
-          'Timestamp': None,
-        })
+      reviews.append({
+        'UID': UID,
+        'CID': CONTENT_ID,
+        'Rating': RATING,
+        'ContentType': CONTENT_TYPE,
+        'Timestamp': None,
+      })
     return pd.DataFrame().from_records(reviews)
 
   def getAllUsers(self, ) -> pd.DataFrame:
@@ -134,9 +127,10 @@ class DataBaseLoader(metaclass=Singleton):
     return pd.DataFrame().from_records(users)
   
   def getAllSubscription(self, ) -> pd.DataFrame:
-    query = 'SELECT * FROM Subscription'
+    query = 'SELECT * FROM _SubscriptionToUser'
     response = self.__execute(query)
     subscriptions = list()
+    print(response)
     for row in response:
       UID = row[1]
       SUBSCRIPTION = row[0]

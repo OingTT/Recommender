@@ -8,7 +8,7 @@ class Cluster():
       ...
 
     def __call__(self, encoded_df: pd.DataFrame) -> None:
-      optimalK = self._findOptimalKWithSilhouetteScore(encoded_df, 2, 30)
+      optimalK = self._findOptimalKWithSilhouetteScore(encoded_df, 2, 10)
       print(f"Clustering with K={optimalK}")
       clustering_result = self.KMeans(df=encoded_df, K=optimalK, method='k-means++')
       encoded_df['cluster_label'] = clustering_result

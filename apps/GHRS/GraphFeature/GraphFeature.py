@@ -23,17 +23,28 @@ def TimeTaken(func):
 class GraphFeature(metaclass=ABCMeta):
   preprocessed_data_dir = './preprocessed_data'
 
-  def __init__(self, users_df: pd.DataFrame, ratings_df: pd.DataFrame):
+  def __init__(self, CFG: dict, users_df: pd.DataFrame, ratings_df: pd.DataFrame):
+    self.CFG = CFG
     self.users_df = users_df
     self.ratings = ratings_df
 
   def __call__(self, alpha_coef: float=0.005) -> pd.DataFrame:
     graphFeature_df_path = os.path.join(self.preprocessed_data_dir, 'graphFeature.pkl')
-    self.graphFeature_df = load_pickle(graphFeature_df_path)
+    
+    if self.CFG['train_ae']:
+      self.graphFeature_df = load_pickle(graphFeature_df_path)
+    else:
+      self.graphFeature_df = None
     if not isinstance(self.graphFeature_df, pd.DataFrame):
       self._getGraph(alpha_coef=alpha_coef)
       self.graphFeature_df = self._getGraphFeatures()
-      save_pickle(self.graphFeature_df, graphFeature_df_path)
+      self.graphFeature_df = self.graphFeature_df.reset_index()
+
+      if 'index' in self.graphFeature_df.columns.to_list():
+        self.graphFeature_df = self.graphFeature_df.drop(['index'], axis=1)
+
+      if self.CFG['train_ae']:
+        save_pickle(self.graphFeature_df, graphFeature_df_path)
     return self.graphFeature_df
   
   def _add_edge(self, edge: list) -> None:
@@ -45,7 +56,7 @@ class GraphFeature(metaclass=ABCMeta):
     self._addGraphEdges() # UID가 String이라서, 그냥 넣으면 안됨
 
   def _extendPairs(self):
-    grouped = self.ratings.groupby(['MID', 'Rating'])
+    grouped = self.ratings.groupby(['CID', 'Rating'])
     # self.pairs = load_pickle('./pairs.pkl')
     # if isinstance(self.pairs, list):
     #   return

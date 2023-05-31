@@ -4,6 +4,7 @@ from apps.GHRS.GHRS import GHRS
 
 cfg = get_args()
 
+cfg['train_ae'] = True
 cfg['debug'] = True
 cfg['log'] = True
 cfg['device'] = 'gpu'

@@ -1,6 +1,6 @@
 import pandas as pd
 
-from apps.GHRS.DataBaseLoader import DataBaseLoader
+from apps.GHRS.Dataset.DataBaseLoader import DataBaseLoader
 
 def getAllReviews(dbLoader: DataBaseLoader) -> list:
   reviews = dbLoader._test("SELECT * FROM Review")
@@ -79,8 +79,12 @@ def len_reviews_by_email(dbLoader: DataBaseLoader, userEmail):
 
 dbLoader = DataBaseLoader()
 
+print(dbLoader._test('SHOW TABLES'))
+
+print(dbLoader._test('SELECT * FROM _SubscriptionToUser JOIN Subscription ON _SubscriptionToUser.B'))
+
 # clhkairuv0000mn08gt2yvi5b
-print(dbLoader._test('SELECT id FROM User WHERE name="김민재"'))
+# print(dbLoader._test('SELECT id FROM User WHERE name="김민재"'))
 
 
 # len_reviews_by_name(dbLoader, '박준서')

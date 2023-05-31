@@ -21,7 +21,8 @@ class GHRS(metaclass=Singleton):
   __call__ => Prediction & Recommendation
   training => Train Autoencoder & Save Best model to pretrained_models
   '''
-  autoencoder = None
+  autoencoder: pl.LightningModule = None
+  latent_df: pd.DataFrame = None
 
   def __init__(
       self,
@@ -46,6 +47,9 @@ class GHRS(metaclass=Singleton):
       default_root_dir="./pretrained_model",
       log_every_n_steps=1,
     )
+    if not self.CFG['train_ae']:
+      self.autoencoder = self.__load_best_model()
+      self.__get_latent_df(self.autoencoder, self.ghrsDataset.GraphFeature_df)
 
   def __delete_model_check_points(self) -> None:
     pretrained_model_path = self.CFG['pretrained_model_dir']
@@ -71,7 +75,13 @@ class GHRS(metaclass=Singleton):
     pretrained_model_dir: str = self.CFG['pretrained_model_dir']
     if not os.path.exists(pretrained_model_dir):
       os.mkdir(pretrained_model_dir)
-    for chkp in os.listdir(pretrained_model_dir):
+
+    model_dir_list = os.listdir(pretrained_model_dir)
+
+    if len(model_dir_list) == 0:
+      return None
+
+    for chkp in model_dir_list:
       if not chkp.startswith('Pretrained-epoch'):
         continue
       splited = chkp.split('-')
@@ -83,7 +93,7 @@ class GHRS(metaclass=Singleton):
     if len(str(min_epoch)) == 1:
       min_epoch = f'0{min_epoch}'
 
-    best_model = os.path.join(pretrained_model_dir, 'Pretrained-epoch={min_epoch}-valid_loss={min_loss:.4f}.ckpt')
+    best_model = os.path.join(pretrained_model_dir, f'Pretrained-epoch={min_epoch}-valid_loss={min_loss:.4f}.ckpt')
 
     return AutoEncoder.load_from_checkpoint(
       checkpoint_path=best_model,
@@ -119,6 +129,8 @@ class GHRS(metaclass=Singleton):
   def __get_latent_df(self, model: pl.LightningModule, graphFeature_df: pd.DataFrame) -> pd.DataFrame:
     if model is None:
       raise ValueError('model is None')
+    if isinstance(self.latent_df, pd.DataFrame):
+      return self.latent_df
     # prediction => prediction of autoencoder for each batch
     latent_df: list[pd.DataFrame] = self.trainer.predict(model, datamodule=self.ghrsDataset)
     # prediction => prediction of autoencoder for all data
@@ -136,21 +148,22 @@ class GHRS(metaclass=Singleton):
     While training, we use movie lens data
     but while prediction, we don't use movie lens data
     '''
-    return df[~df['UID'].isin(self.ghrsDataset.users_df['UID'])]
+    return df[~df['UID'].isin(self.ghrsDataset.ml_users_df['UID'])]
   
   def __get_target_cluster_uids(self, UID: str) -> List[str]:
     if self.autoencoder is None:
       self.autoencoder = self.__load_best_model()
 
-    # prediction => prediction of autoencoder
-    prediction = self.__get_latent_df(self.autoencoder, self.ghrsDataset.GraphFeature_df)
+    # latent_df => prediction of autoencoder
+    if not isinstance(self.latent_df, pd.DataFrame):
+      self.latent_df = self.__get_latent_df(self.autoencoder, self.ghrsDataset.GraphFeature_df)
 
     # clustered => prediction with cluster label
-    clustered = self.__clustering(encoded_df=prediction)
+    clustered = self.__clustering(encoded_df=self.latent_df)
 
     # clustered => concat with UID
     clustered = pd.concat([self.ghrsDataset.GraphFeature_df['UID'], clustered], axis=1)
-
+    
     # clustered => drop movie lens data
     clustered = self.__drop_movie_lens(clustered)
 
@@ -180,6 +193,8 @@ class GHRS(metaclass=Singleton):
     return Dataframe of mean rating about target user's cluster
     columns: ['ContentType', 'CID', 'Rating']
     '''
+    contentType = contentType.upper()
+
     target_cluster_uids = self.__get_target_cluster_uids(UID=UID)
 
     # target_cluster_rating => ratings about every contentType of target cluster
@@ -204,7 +219,7 @@ class GHRS(metaclass=Singleton):
     # target_cluster_rating_mean_rating => top 10 movies
     target_cluster_rating_mean = target_cluster_rating_mean.iloc[: topN]
 
-    return self.__content_prediction_to_json(target_cluster_rating_mean)
+    return self.__content_prediction_to_json(target_cluster_rating_mean, contentType)
   
   def predict_ott(self, UID: str, topN: int=20) -> List[dict]:
     # target_cluster_uids => uids of target cluster
@@ -212,12 +227,16 @@ class GHRS(metaclass=Singleton):
 
     # subscription => subscription of target cluster
     subscription = self.databaseLoader.getAllSubscription()
+    print('subscription_1 ', subscription)
 
     # subscription => subscription of target cluster
     subscription = subscription[subscription['UID'].isin(target_cluster_uids)]
+    print('subscription_2 ', subscription)
     
-    # subscription => group by OTT & count
-    subscription = subscription.groupby('OTT', as_index=False)['UID'].count()
+    # subscription => group by OTT & count among UID(Count of how much users subscribing specific OTT)
+    subscription = subscription.groupby('Subscription', as_index=False)['UID'].count()
+    print('subscription_3 ', subscription)
+
 
     # subscription => sort by subscription count
     subscription.sort_values(by='UID', ascending=False, inplace=True)
@@ -226,10 +245,9 @@ class GHRS(metaclass=Singleton):
 
     return self.__ott_prediction_to_json(subscription)
 
-  def __content_prediction_to_json(self, rating_mean: pd.DataFrame) -> List[dict]:
+  def __content_prediction_to_json(self, rating_mean: pd.DataFrame, contentType: str) -> List[dict]:
     results = list()
     for i in range(len(rating_mean)):
-      contentType = rating_mean['ContentType'].iloc[i]
       cid = rating_mean['CID'].iloc[i]
       rating = rating_mean['Rating'].iloc[i]
       results.append(dict(
@@ -242,10 +260,12 @@ class GHRS(metaclass=Singleton):
   def __ott_prediction_to_json(self, subscription_count: pd.DataFrame) -> List[dict]:
     results = list()
     for i in range(len(subscription_count)):
-      ott = subscription_count['OTT'].iloc[i]
+      ott = subscription_count['Subscription'].iloc[i]
       count = subscription_count['UID'].iloc[i]
+      print(ott)
+      print(type(ott))
       results.append(dict(
-        OTT=ott,
+        OTT=int(ott),
         Count=int(count)
       ))
     return results
