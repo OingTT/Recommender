@@ -24,6 +24,10 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+@app.get("/recommendation/ottcomb/{uid}")
+async def recommend_ott(uid: str):
+    return ghrs.predict_ott_combination(UID=uid)
+
 @app.get("/recommendation/ott/{uid}")
 async def recommend_ott(uid: str):
     return ghrs.predict_ott(UID=uid)

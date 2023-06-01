@@ -77,11 +77,9 @@ def len_reviews_by_email(dbLoader: DataBaseLoader, userEmail):
   print(f'{userName}: {cnt}')
 
 
-dbLoader = DataBaseLoader()
+# dbLoader = DataBaseLoader()
 
-print(dbLoader._test('SHOW TABLES'))
-
-print(dbLoader._test('SELECT * FROM _SubscriptionToUser JOIN Subscription ON _SubscriptionToUser.B'))
+# print(dbLoader.getAllOTT())
 
 # clhkairuv0000mn08gt2yvi5b
 # print(dbLoader._test('SELECT id FROM User WHERE name="김민재"'))

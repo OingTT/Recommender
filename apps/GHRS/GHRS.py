@@ -221,22 +221,46 @@ class GHRS(metaclass=Singleton):
 
     return self.__content_prediction_to_json(target_cluster_rating_mean, contentType)
   
+  def __get_user_subscribe_matrix(self, subscription_df: pd.DataFrame):
+    allOTT = self.databaseLoader.getAllOTT()
+    US_MATRIX = pd.DataFrame(columns=['UID'] + allOTT['OID'].to_list())
+    for row_idx in range(len(subscription_df['UID'].unique())):
+      user = subscription_df[subscription_df['UID'] == subscription_df['UID'].iloc[row_idx]]
+      user_sub = user['Subscription'].values
+      for sub in user_sub:
+        ...
+      
+
+  def predict_ott_combination(self, UID: str, topN: int=20) -> List[dict]:
+    # target_cluster_uids => uids of target cluster
+    target_cluster_uids = self.__get_target_cluster_uids(UID=UID)
+
+    # subscription => subscribe of target cluster
+    subscription = self.databaseLoader.getAllUserSubscribe()
+
+    self.__get_user_subscribe_matrix(subscription)
+
+    # subscribe => subscribe of target cluster
+    # subscribe = subscribe[subscribe['UID'].isin(target_cluster_uids)]
+    # print('subscription_2 ', subscribe)
+
+    # subscription_ = subscribe.groupby(by=['UID'], as_index=False).groups
+    # print('subscription_3 ', subscription_)
+
+    
+
   def predict_ott(self, UID: str, topN: int=20) -> List[dict]:
     # target_cluster_uids => uids of target cluster
     target_cluster_uids = self.__get_target_cluster_uids(UID=UID)
 
     # subscription => subscription of target cluster
     subscription = self.databaseLoader.getAllSubscription()
-    print('subscription_1 ', subscription)
 
     # subscription => subscription of target cluster
     subscription = subscription[subscription['UID'].isin(target_cluster_uids)]
-    print('subscription_2 ', subscription)
     
     # subscription => group by OTT & count among UID(Count of how much users subscribing specific OTT)
     subscription = subscription.groupby('Subscription', as_index=False)['UID'].count()
-    print('subscription_3 ', subscription)
-
 
     # subscription => sort by subscription count
     subscription.sort_values(by='UID', ascending=False, inplace=True)

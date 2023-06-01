@@ -126,17 +126,39 @@ class DataBaseLoader(metaclass=Singleton):
       })
     return pd.DataFrame().from_records(users)
   
-  def getAllSubscription(self, ) -> pd.DataFrame:
+  def getAllUserSubscribe(self, ) -> pd.DataFrame:
     query = 'SELECT * FROM _SubscriptionToUser'
     response = self.__execute(query)
     subscriptions = list()
-    print(response)
     for row in response:
       UID = row[1]
       SUBSCRIPTION = row[0]
       subscriptions.append({
         'UID': UID,
         'Subscription': SUBSCRIPTION,
+      })
+    return pd.DataFrame().from_records(subscriptions)
+  
+  def getAllOTT(self):
+    query = 'SELECT * FROM Subscription'
+    response = self.__execute(query)
+    subscriptions = list()
+    for row in response:
+      OID = row[0]
+      ENGLISH_NAME = row[1]
+      KOREAN_NAME = row[2]
+      PROVIDER_ID = row[3]
+      NETWORK_ID = row[4]
+      PRICE = row[5]
+      SHARING = row[6]
+      subscriptions.append({
+        'OID': OID,
+        'E_NAME': ENGLISH_NAME,
+        'K_NAME': KOREAN_NAME,
+        'PROVIDER_ID': PROVIDER_ID,
+        'NETWORK_ID': NETWORK_ID,
+        'PRICE': PRICE,
+        'SHARING': SHARING
       })
     return pd.DataFrame().from_records(subscriptions)
   
