@@ -5,6 +5,7 @@ def get_args():
   parser.add_argument('--debug', action='store_true', help='debug mode', default=False)
   parser.add_argument('--log', action='store_true', help='log mode', default=False)
   parser.add_argument('--device', action='store', help='disables CUDA training', default='gpu')
+  parser.add_argument('--refresh', action='store_true', help='---', default=False)
   parser.add_argument('--train-ae', action='store_true', help='train auto encoder', default=False)
   parser.add_argument('--latent-dim', action='store', help='latent dimension', default=8, type=int)
   parser.add_argument('--batch-size', action='store', help='batch size', default=1024, type=int)

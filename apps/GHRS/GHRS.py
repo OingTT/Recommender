@@ -1,4 +1,5 @@
 import os
+import json
 import wandb
 import datetime
 
@@ -11,6 +12,7 @@ from pytorch_lightning.callbacks import ModelCheckpoint
 
 from apps.Singleton import Singleton
 from apps.GHRS.Cluster.Cluster import Cluster
+from apps.utils.utils import save_pickle, load_pickle
 from apps.GHRS.Dataset.GHRSDataset import GHRSDataset
 from apps.GHRS.AutoEncoder.AutoEncoder import AutoEncoder
 from apps.GHRS.Dataset.DataBaseLoader import DataBaseLoader
@@ -21,6 +23,7 @@ class GHRS(metaclass=Singleton):
   __call__ => Prediction & Recommendation
   training => Train Autoencoder & Save Best model to pretrained_models
   '''
+  LATENT_MATRIX = './preprocessed_data/latentMatrix.pkl'
   autoencoder: pl.LightningModule = None
   latent_df: pd.DataFrame = None
 
@@ -120,21 +123,31 @@ class GHRS(metaclass=Singleton):
       )
     ]
 
-  def __call__(self, UID: str) -> Tuple[pd.DataFrame, ...]:
+  def __call__(self) -> Tuple[pd.DataFrame, ...]:
     '''
-    this function assume that autoencoder is already trained
+    refresh all of data about GHRS and save at preprocessed_data directory
     '''
-    ...
+    self.ghrsDataset = GHRSDataset(self.CFG, DataBaseLoader=DataBaseLoader())
+    self.autoencoder = self.__load_best_model()
+    self.__get_latent_df(self.autoencoder, self.ghrsDataset.GraphFeature_df)
 
   def __get_latent_df(self, model: pl.LightningModule, graphFeature_df: pd.DataFrame) -> pd.DataFrame:
     if model is None:
       raise ValueError('model is None')
-    if isinstance(self.latent_df, pd.DataFrame):
-      return self.latent_df
+    
+    # self.latent_df = load_pickle(self.LATENT_MATRIX)
+    
+    if not self.CFG['refresh']:
+      self.latent_df = load_pickle(self.LATENT_MATRIX)
+      if isinstance(self.latent_df, pd.DataFrame):
+        return self.latent_df
+    
     # prediction => prediction of autoencoder for each batch
     latent_df: list[pd.DataFrame] = self.trainer.predict(model, datamodule=self.ghrsDataset)
     # prediction => prediction of autoencoder for all data
     latent_df: pd.DataFrame = pd.concat(latent_df, axis=0)
+    if self.CFG['refresh']:
+      latent_df.to_pickle(self.LATENT_MATRIX)
     return latent_df
   
   def __clustering(self, encoded_df: pd.DataFrame) -> pd.DataFrame:
@@ -155,8 +168,7 @@ class GHRS(metaclass=Singleton):
       self.autoencoder = self.__load_best_model()
 
     # latent_df => prediction of autoencoder
-    if not isinstance(self.latent_df, pd.DataFrame):
-      self.latent_df = self.__get_latent_df(self.autoencoder, self.ghrsDataset.GraphFeature_df)
+    self.latent_df = self.__get_latent_df(self.autoencoder, self.ghrsDataset.GraphFeature_df)
 
     # clustered => prediction with cluster label
     clustered = self.__clustering(encoded_df=self.latent_df)
@@ -220,41 +232,40 @@ class GHRS(metaclass=Singleton):
     target_cluster_rating_mean = target_cluster_rating_mean.iloc[: topN]
 
     return self.__content_prediction_to_json(target_cluster_rating_mean, contentType)
-  
-  def __get_user_subscribe_matrix(self, subscription_df: pd.DataFrame):
-    allOTT = self.databaseLoader.getAllOTT()
-    US_MATRIX = pd.DataFrame(columns=['UID'] + allOTT['OID'].to_list())
-    for row_idx in range(len(subscription_df['UID'].unique())):
-      user = subscription_df[subscription_df['UID'] == subscription_df['UID'].iloc[row_idx]]
-      user_sub = user['Subscription'].values
-      for sub in user_sub:
-        ...
-      
 
-  def predict_ott_combination(self, UID: str, topN: int=20) -> List[dict]:
+  def predict_ott_combination(self, UID: str, topN: int=3) -> List[dict]:
     # target_cluster_uids => uids of target cluster
     target_cluster_uids = self.__get_target_cluster_uids(UID=UID)
-
-    # subscription => subscribe of target cluster
+    
+    # subscription => subscription of all users
     subscription = self.databaseLoader.getAllUserSubscribe()
 
-    self.__get_user_subscribe_matrix(subscription)
+    # subscription => subscription of target cluster
+    subscription = subscription[self.ghrsDataset.ratings_df['UID'].isin(target_cluster_uids)]
 
-    # subscribe => subscribe of target cluster
-    # subscribe = subscribe[subscribe['UID'].isin(target_cluster_uids)]
-    # print('subscription_2 ', subscribe)
+    combinations = dict()
+    for row_idx in range(len(subscription['UID'].unique())):
+      user = subscription[subscription['UID'] == subscription['UID'].iloc[row_idx]]
+      user_sub = user['Subscription'].values
+      # if len(user_sub) == 1:
+      #   continue
+      COMBINATION = sorted(user_sub).__str__()
+      if COMBINATION in combinations.keys():
+        combinations[COMBINATION] += 1
+      else:
+        combinations[COMBINATION] = 1
 
-    # subscription_ = subscribe.groupby(by=['UID'], as_index=False).groups
-    # print('subscription_3 ', subscription_)
-
+    comb_cnt = {k: v for k, v in sorted(combinations.items(), key=lambda item: item[1], reverse=True)}
+    comb = [json.loads(key) for key, value in comb_cnt.items()]
     
+    return comb[: topN]
 
   def predict_ott(self, UID: str, topN: int=20) -> List[dict]:
     # target_cluster_uids => uids of target cluster
     target_cluster_uids = self.__get_target_cluster_uids(UID=UID)
 
     # subscription => subscription of target cluster
-    subscription = self.databaseLoader.getAllSubscription()
+    subscription = self.databaseLoader.getAllUserSubscribe()
 
     # subscription => subscription of target cluster
     subscription = subscription[subscription['UID'].isin(target_cluster_uids)]

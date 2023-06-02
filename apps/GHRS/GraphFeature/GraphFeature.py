@@ -21,7 +21,7 @@ def TimeTaken(func):
   return wrapper
 
 class GraphFeature(metaclass=ABCMeta):
-  preprocessed_data_dir = './preprocessed_data'
+  GRAPH_FEATURE = './preprocessed_data/graphFeature.pkl'
 
   def __init__(self, CFG: dict, users_df: pd.DataFrame, ratings_df: pd.DataFrame):
     self.CFG = CFG
@@ -29,12 +29,11 @@ class GraphFeature(metaclass=ABCMeta):
     self.ratings = ratings_df
 
   def __call__(self, alpha_coef: float=0.005) -> pd.DataFrame:
-    graphFeature_df_path = os.path.join(self.preprocessed_data_dir, 'graphFeature.pkl')
     
-    if self.CFG['train_ae']:
-      self.graphFeature_df = load_pickle(graphFeature_df_path)
-    else:
-      self.graphFeature_df = None
+    # if self.CFG['train_ae']:
+    #   self.graphFeature_df = load_pickle(self.GRAPH_FEATURE)
+    # else:
+    self.graphFeature_df = None
     if not isinstance(self.graphFeature_df, pd.DataFrame):
       self._getGraph(alpha_coef=alpha_coef)
       self.graphFeature_df = self._getGraphFeatures()
@@ -44,7 +43,7 @@ class GraphFeature(metaclass=ABCMeta):
         self.graphFeature_df = self.graphFeature_df.drop(['index'], axis=1)
 
       if self.CFG['train_ae']:
-        save_pickle(self.graphFeature_df, graphFeature_df_path)
+        save_pickle(self.graphFeature_df, self.GRAPH_FEATURE)
     return self.graphFeature_df
   
   def _add_edge(self, edge: list) -> None:

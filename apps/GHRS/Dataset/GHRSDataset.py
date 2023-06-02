@@ -13,7 +13,6 @@ from apps.apis.TMDB import TMDB
 from apps.GHRS.Dataset.CONST import OCCUPATION_MAP
 from apps.GHRS.Dataset.DataBaseLoader import DataBaseLoader
 from apps.GHRS.GraphFeature.GraphFeature_GraphTool import GraphFeature_GraphTool as GraphFeature
-# from apps.GHRS.GraphFeature.GraphFeature_RAPIDS import GraphFeature_RAPIDS as GraphFeature
 
 class GHRSDataset(pl.LightningDataModule):
   '''
@@ -107,7 +106,7 @@ class GHRSDataset(pl.LightningDataModule):
       df_X['Gender'] = df_X['Gender'].replace('M', '1')
     elif _X == 'Age':
       PREFIX = self.__AGE_DUMMY_PREFIX
-
+      
     values = np.array(df_X[_X])
     # integer encode
     label_encoder = LabelEncoder()

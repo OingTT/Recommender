@@ -16,9 +16,15 @@ cfgs = get_args()
 
 from datetime import datetime
 
-start = datetime.now()
+# start = datetime.now()
+# ghrs = GHRS(CFG=cfgs)
+# prediction = ghrs.predict("clhkairuv0000mn08gt2yvi5b")
+# end = datetime.now()
+# print(end - start)
+# print(prediction)
+
 ghrs = GHRS(CFG=cfgs)
-prediction = ghrs.predict("clhkairuv0000mn08gt2yvi5b")
-end = datetime.now()
-print(end - start)
-print(prediction)
+
+res = ghrs.predict_ott_combination('clhkairuv0000mn08gt2yvi5b')
+
+print(res)

@@ -77,9 +77,9 @@ def len_reviews_by_email(dbLoader: DataBaseLoader, userEmail):
   print(f'{userName}: {cnt}')
 
 
-# dbLoader = DataBaseLoader()
+dbLoader = DataBaseLoader()
 
-# print(dbLoader.getAllOTT())
+print(dbLoader.getAllOTT())
 
 # clhkairuv0000mn08gt2yvi5b
 # print(dbLoader._test('SELECT id FROM User WHERE name="김민재"'))

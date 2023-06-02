@@ -8,8 +8,9 @@ cfg['train_ae'] = True
 cfg['debug'] = True
 cfg['log'] = True
 cfg['device'] = 'gpu'
-cfg['max_epoch'] = 300
-cfg['sample_rate'] = 0.1
+cfg['max_epoch'] = 500
+cfg['sample_rate'] = 0.5
+cfg['pretrained_model_dir'] = './pretrained_model_'
 
 ghrs = GHRS(CFG=cfg)
 ghrs.train()

@@ -114,8 +114,10 @@ class DataBaseLoader(metaclass=Singleton):
       BIRTHDAY = row[6]
       OCCUPATION = row[7]
       GENDER = row[8]
+      if UID is None or BIRTHDAY is None or OCCUPATION is None or GENDER is None: # 필수 정보가 없는 경우 제외
+        continue
       AGE = self.__getAge(BIRTHDAY)
-      if BIRTHDAY is None or OCCUPATION is None or GENDER is None: # 필수 정보가 없는 경우 제외
+      if AGE <= 0:
         continue
       users.append({
         'UID': UID,
