@@ -17,42 +17,30 @@ class GraphFeature_NX(GraphFeature.GraphFeature):
       self.G.add_edge(el[1], el[1], weight=1)
 
   @TimeTaken
-  def _getGraphFeatures(self) -> pd.DataFrame:
-    self._calcPagerank()
-    self._calcDegreeCentrality()
-    self._calcClosenessCentrality()
-    self._calcBetweennessCentrality()
-    self._calcLoadCentrality()
-    self._calcAverageNeighborDegree()
-    graphFeature_df = self.users_df[self.users_df.columns[0:]]
-    graphFeature_df.fillna(0, inplace=True)
-    return graphFeature_df
-  
-  @TimeTaken
   def _calcPagerank(self) -> None:
     pr = nx.pagerank(self.G.to_directed())
-    self.graphFeature2DataFrame('PR', pr)
+    self.concatGraphFeatureToUsers('PR', pr)
 
   @TimeTaken
   def _calcDegreeCentrality(self) -> None:
     dc = nx.degree_centrality(self.G)
-    self.graphFeature2DataFrame('DC', dc)
+    self.concatGraphFeatureToUsers('DC', dc)
   @TimeTaken
   def _calcClosenessCentrality(self) -> None:
     cc = nx.closeness_centrality(self.G)
-    self.graphFeature2DataFrame('CC', cc)
+    self.concatGraphFeatureToUsers('CC', cc)
 
   @TimeTaken
   def _calcBetweennessCentrality(self) -> None:
     bc = nx.betweenness_centrality(self.G)
-    self.graphFeature2DataFrame('BC', bc)
+    self.concatGraphFeatureToUsers('BC', bc)
 
   @TimeTaken
   def _calcLoadCentrality(self) -> None:
     lc = nx.load_centrality(self.G)
-    self.graphFeature2DataFrame('LC', lc)
+    self.concatGraphFeatureToUsers('LC', lc)
 
   @TimeTaken
   def _calcAverageNeighborDegree(self) -> None:
     nd = nx.average_neighbor_degree(self.G, weight='weight')
-    self.graphFeature2DataFrame('AND', nd)
+    self.concatGraphFeatureToUsers('AND', nd)

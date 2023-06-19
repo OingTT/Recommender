@@ -1,22 +1,35 @@
 matplotlib
-numpy
-pandas
-scipy
-requests
-scikit-learn
 tqdm
-pytorch-lightning>=2
-wandb
 python-dotenv
-mysql-connector-python
+pickle
+
+# For deep learning
+numpy
+scipy
+pandas
+scikit-learn
+pytorch-lightning>=2
+
+# For database
+mysqlclient # sudo apt install libmysqlclient-dev
+sqlmodel
+sqlalchemy
+aiomysql
+
+# For api server
 fastapi
 uvicorn[standard]
+requests
+
+# For logging
+wandb
 tensorboard
 tensorboardX
-# pickle
+
+# For graph
+# graphtools # Installation instruction https://git.skewed.de/count0/graph-tool/-/wikis/installation-instructions#windows
 
 # networkx
-# graphtools # Installation instruction https://git.skewed.de/count0/graph-tool/-/wikis/installation-instructions#windows
 # igraph
 # RAPIDS
 # cudf

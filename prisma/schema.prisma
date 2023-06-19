@@ -1,0 +1,135 @@
+generator client {
+  provider = "prisma-client-py"
+  interface = "asyncio"
+  recursive_type_depth = 5
+}
+
+datasource db {
+  provider     = "mysql"
+  url          = env("DATABASE_URL")
+  relationMode = "prisma"
+}
+
+model Account {
+  id                       String  @id @default(cuid())
+  userId                   String
+  type                     String
+  provider                 String
+  providerAccountId        String
+  refresh_token            String? @db.Text
+  access_token             String? @db.Text
+  expires_at               Int?
+  token_type               String?
+  scope                    String?
+  id_token                 String? @db.Text
+  session_state            String?
+  refresh_token_expires_in Int?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+  @@index([userId])
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+model User {
+  id            String              @id @default(cuid())
+  name          String?
+  email         String?             @unique
+  emailVerified DateTime?
+  image         String?
+  avatar        String?
+  birth         DateTime?
+  occupation    Occupation?         @relation(fields: [occupationId], references: [id], onDelete: Cascade)
+  occupationId  Int?
+  gender        String?             @db.Char(1)
+  accounts      Account[]
+  sessions      Session[]
+  subscriptions Subscription[]
+  categories    CategoriesOnUsers[]
+  genres        Genre[]
+  reviews       Review[]
+
+  @@index([occupationId])
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+}
+
+model CategoriesOnUsers {
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId     String
+  category   Category @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+  categoryId Int
+  order      Int
+
+  @@id([userId, categoryId])
+  @@index([userId])
+  @@index([categoryId])
+}
+
+enum Watch {
+  WATCHED
+  WATCHING
+  WANT_TO_WATCH
+}
+
+enum ContentType {
+  MOVIE
+  TV
+}
+
+model Review {
+  user        User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId      String
+  contentType ContentType
+  contentId   Int
+  watch       Watch
+  rating      Int         @default(0) @db.TinyInt
+
+  @@id([userId, contentType, contentId])
+  @@index([userId])
+}
+
+model Subscription {
+  id         Int    @id @default(autoincrement())
+  key        String @unique
+  name       String @unique
+  providerId Int?
+  networkId  Int?
+  price      Int    @default(0)
+  sharing    Int    @default(0)
+  users      User[]
+}
+
+model Category {
+  id    Int                 @id @default(autoincrement())
+  name  String              @unique
+  users CategoriesOnUsers[]
+}
+
+model Genre {
+  id    Int    @id @default(autoincrement())
+  name  String @unique
+  users User[]
+}
+
+model Occupation {
+  id    Int    @id @default(autoincrement())
+  name  String @unique
+  users User[]
+}

@@ -12,3 +12,7 @@ Scikit-Learn: For Clustering about Latent vector that aquired from Autoencoder
 ## Auxiliary Library
 Pandas \
 Numpy
+
+## Graph
+Graph-tool
+GraphViz (install require) => https://graphviz.gitlab.io/download/

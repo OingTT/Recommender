@@ -7,7 +7,10 @@ import pandas as pd
 from abc import *
 from time import time
 from tqdm import tqdm
-from apps.utils.utils import save_pickle, load_pickle
+from typing import List, Union, SupportsInt, SupportsFloat
+
+import graph_tool as gt
+from graph_tool import draw
 
 def TimeTaken(func):
   def wrapper(*args, **kargs):
@@ -21,66 +24,72 @@ def TimeTaken(func):
   return wrapper
 
 class GraphFeature(metaclass=ABCMeta):
-  GRAPH_FEATURE = './preprocessed_data/graphFeature.pkl'
-
-  def __init__(self, CFG: dict, users_df: pd.DataFrame, ratings_df: pd.DataFrame):
+  def __init__(self, CFG: dict):
     self.CFG = CFG
-    self.users_df = users_df
-    self.ratings = ratings_df
 
-  def __call__(self, alpha_coef: float=0.005) -> pd.DataFrame:
+    self.GRAPH_FEATURE = os.path.join(CFG['preprocessed_data_dir'], 'GraphFeatures.pkl')
+
+    self.graph_feature_calculators = self.__get_graph_feature_calculators
+
+  def __call__(self, users: pd.DataFrame, ratings: pd.DataFrame, alpha_coef: float=0.005) -> pd.DataFrame:
+    self.users = users
+    self.ratings = ratings
     
-    # if self.CFG['train_ae']:
-    #   self.graphFeature_df = load_pickle(self.GRAPH_FEATURE)
-    # else:
-    self.graphFeature_df = None
-    if not isinstance(self.graphFeature_df, pd.DataFrame):
-      self._getGraph(alpha_coef=alpha_coef)
-      self.graphFeature_df = self._getGraphFeatures()
-      self.graphFeature_df = self.graphFeature_df.reset_index()
+    self._getGraph(alpha_coef=alpha_coef)
+    self.graphFeature_df = self._getGraphFeatures()
+    self.graphFeature_df = self.graphFeature_df.reset_index()
 
-      if 'index' in self.graphFeature_df.columns.to_list():
-        self.graphFeature_df = self.graphFeature_df.drop(['index'], axis=1)
+    if 'index' in self.graphFeature_df.columns.to_list():
+      self.graphFeature_df = self.graphFeature_df.drop(['index'], axis=1)
 
-      if self.CFG['train_ae']:
-        save_pickle(self.graphFeature_df, self.GRAPH_FEATURE)
     return self.graphFeature_df
-  
-  def _add_edge(self, edge: list) -> None:
-    self.G.add_edge(edge[0], edge[1])
 
   def _getGraph(self, alpha_coef):
-    self._extendPairs()
-    self._getEdgeList(alpha_coef)
-    self._addGraphEdges() # UID가 String이라서, 그냥 넣으면 안됨
+    pairs = self._extendPairs()
+    edge_list = self._getEdgeList(pairs, alpha_coef)
+    self._addGraphEdges(edge_list)
 
-  def _extendPairs(self):
+  def _extendPairs(self) -> List:
     grouped = self.ratings.groupby(['CID', 'Rating'])
-    # self.pairs = load_pickle('./pairs.pkl')
-    # if isinstance(self.pairs, list):
-    #   return
-    self.pairs = list()
-    for key, group in tqdm(grouped, desc='_getGraph::extend'):
+    print(grouped.groups)
+    pairs = list()
+    for _, group in tqdm(grouped, desc='_getGraph::extend'):
       for comb in itertools.combinations(group.index, 2):
-        self.pairs.append(comb)
-    print('pairs.len: ', len(self.pairs))
-    # save_pickle(self.pairs, './pairs.pkl')
+        pairs.append(comb)
+    return pairs
 
-  def _getEdgeList(self, alpha_coef):
-    counter = collections.Counter(self.pairs)
-    ### About 3~4 minute at aplha = 0.005 * 3883
-    # alpha = alpha_coef * 3883  # param*i_no
+  def _getEdgeList(self, pairs: list, alpha_coef: Union[SupportsInt, SupportsFloat]) -> map:
+    counter = collections.Counter(pairs)
     alpha = alpha_coef * 38
-    self.edge_list = map(list, collections.Counter(el for el in tqdm(counter.elements(), desc='_getGraph::map', total=132483307) if counter[el] >= alpha).keys())
-
-  def graphFeature2DataFrame(self, col_name: str, graph_feature: pd.Series) -> None:
-    self.users_df[col_name] = self.users_df.index.map(graph_feature)
-    self.users_df[col_name] /= float(self.users_df[col_name].max())
+    edge_list = map(list, collections.Counter(el for el in tqdm(counter.elements(), desc='_getGraph::map') if counter[el] >= alpha).keys())
+    return edge_list
 
   @abstractmethod
+  def _addGraphEdges(self, edge_list: list) -> None:
+    ...
+
+  def concatGraphFeatureToUsers(self, col_name: str, graph_feature: pd.Series) -> pd.DataFrame:
+    self.users[col_name] = self.users.index.map(graph_feature)
+    self.users[col_name] /= float(self.users[col_name].max())
+
+  def __get_graph_feature_calculators(self) -> List:
+    calculator_list = list()
+    for func_name in dir(self):
+      if func_name.startswith('_calc'):
+        calculator_list.append(func_name)
+    return calculator_list
+
   def _getGraphFeatures(self) -> pd.DataFrame:
-    ...
+    self.graph_feature_values = dict()
+    for func_name in dir(self):
+      if func_name.startswith('_calc'):
+        calculator = self.__getattribute__(func_name)
+        gf = calculator()
+        gf_name = func_name.replace('_calc', '')
+        self.graph_feature_values[gf_name] = gf
+    
+    graph_features = self.users[self.users.columns[0: ]]
+    graph_features = graph_features.fillna(0)
+    print('GraphFeatures\n', graph_features)
+    return graph_features
 
-  @abstractmethod
-  def _addGraphEdges(self) -> None:
-    ...

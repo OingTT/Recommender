@@ -1,15 +1,17 @@
 import uvicorn
 
-from apps.GHRS.GHRS import GHRS
+from threading import Thread
+
+from apps.GHRS.GHRSPred import GHRSPred
+from apps.GHRS.GHRSCalc import GHRSCalc
 from apps.arg_parser import get_args
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.middleware.httpsredirect import HTTPSRedirectMiddleware
 
 cfgs = get_args()
 
-ghrs = GHRS(CFG=cfgs)
+ghrs_pred = GHRSPred(CFG=cfgs)
 
 app = FastAPI()
 
@@ -24,9 +26,6 @@ app.add_middleware(
   allow_methods=["*"],
   allow_headers=["*"],
 )
-# app.add_middleware(
-#   HTTPSRedirectMiddleware
-# )
 
 @app.get('/')
 async def root():
@@ -37,21 +36,21 @@ async def root():
   description='Recommend OTT Combination',
 )
 async def recommend_ott_combination(uid: str):
-  return ghrs.predict_ott_combination(UID=uid)
+  return ghrs_pred.predict_ott_comb(target_UID=uid)
 
 @app.get(
   path='/recommendation/ott/{uid}',
   description='Recommend OTT by subscription count'
 )
 async def recommend_ott(uid: str):
-  return ghrs.predict_ott(UID=uid)
+  return ghrs_pred.predict_ott(target_UID=uid)
 
 @app.get(
   path='/recommendation/{contentType}/{uid}',
   description='Recommend content => contentType = <MOVIE, TV>',
 )
 async def recommend_content(contentType: str, uid: str):
-  return ghrs.predict_content(contentType=contentType, UID=uid)
+  return ghrs_pred.predict_content(target_UID=uid, contentType=contentType)
 
 if __name__=='__main__':
   uvicorn.run('app:app', host='0.0.0.0', port=10200, reload=False)

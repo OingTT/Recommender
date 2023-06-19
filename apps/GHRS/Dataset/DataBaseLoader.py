@@ -1,5 +1,6 @@
 import os
 import mysql.connector
+import traceback
 
 import pandas as pd
 
@@ -29,7 +30,6 @@ class DataBaseLoader(metaclass=Singleton):
       password=self.PASSWORD,
       ssl_ca=os.getenv("SSL_CERT")
     )
-    self.cursor = self.connection.cursor()
 
   def __disconnect(self, ) -> None:
     if self.cursor is not None:
@@ -38,21 +38,39 @@ class DataBaseLoader(metaclass=Singleton):
       self.connection.close()
 
   def __execute(self, query: str, *args: tuple) -> list:
-    if self.connection is None or self.connection.is_connected() is False:
-      self.__connect()
-    if len(args) == 1:
-      args = (args[0], )
-    if len(args) != 0:
-      self.cursor.execute(query, args)
-    else:
-      self.cursor.execute(query)
-    
-    return self.cursor.fetchall()
+    fail_cnt = 0
+    while True:
+      if fail_cnt >= 3:
+        print('Fail count is over 3. Stop to execute query: {}'.format(query))
+        result = None
+      try:
+        if self.connection is None or self.connection.is_connected() is False:
+          self.__connect()
+        args = (*args, )          
+        cursor = self.connection.cursor()
+        if len(args) != 0:
+          cursor.execute(query, args)
+        else:
+          cursor.execute(query)
+        break
+      except mysql.connector.InterfaceError as e:
+        result = None
+        break
+      except Exception as e:
+        print('Fail to execute query: {}'.format(query))
+        print(e)
+        traceback.print_exc()
+        fail_cnt += 1
+        continue
+      finally:
+        if cursor is not None:
+          result = cursor.fetchall()
+          cursor.close()
+        else:
+          result = None
+    return result
   
   def __getAge(self, birthday: datetime) -> int:
-    '''
-    Movie Lens는 1998년에 만들어진 데이터셋이므로, 1998년을 기준으로 나이를 계산했을듯
-    '''
     if birthday is None:
       return None
     today = datetime.today()

@@ -11,7 +11,7 @@ from pytorch_lightning.loggers import TensorBoardLogger, CSVLogger, WandbLogger
 from pytorch_lightning.callbacks import ModelCheckpoint
 
 from apps.Singleton import Singleton
-from apps.GHRS.Cluster.Cluster import Cluster
+from apps.GHRS.Clustering.Clustering import Clustering
 from apps.utils.utils import save_pickle, load_pickle
 from apps.GHRS.Dataset.GHRSDataset import GHRSDataset
 from apps.GHRS.AutoEncoder.AutoEncoder import AutoEncoder
@@ -27,12 +27,9 @@ class GHRS(metaclass=Singleton):
   autoencoder: pl.LightningModule = None
   latent_df: pd.DataFrame = None
 
-  def __init__(
-      self,
-      CFG: dict = None
-    ):
+  def __init__(self, CFG: dict):
     self.CFG = CFG
-    self.cluster = Cluster()
+    self.cluster = Clustering()
     self.databaseLoader = DataBaseLoader()
     self.datasetDir = self.CFG['movie_lens_dir']
     modelCheckpoint = self.__init_model_checkpoint()
@@ -297,8 +294,6 @@ class GHRS(metaclass=Singleton):
     for i in range(len(subscription_count)):
       ott = subscription_count['Subscription'].iloc[i]
       count = subscription_count['UID'].iloc[i]
-      print(ott)
-      print(type(ott))
       results.append(dict(
         OTT=int(ott),
         Count=int(count)

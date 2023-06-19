@@ -5,11 +5,12 @@ import pytorch_lightning as pl
 
 from torch import nn, Tensor
 from copy import deepcopy
-from typing import Any, Tuple
+from typing import Any, Tuple, Dict
 
 class AutoEncoder(pl.LightningModule):
     def __init__(self, in_feature: int, latent_dim: int, learning_rate: float=0.05) -> None:
       super(AutoEncoder, self).__init__()
+      # self.CFG = CFG
       self.in_feature = in_feature
       self.latent_dim = latent_dim
       self.learning_rate = learning_rate
@@ -69,7 +70,6 @@ class AutoEncoder(pl.LightningModule):
 
     def __common_step(self, batch: Tuple[Tensor], batch_idx: int) -> Tuple[Tensor, Tensor, Tensor]:
       x = batch[0]
-      x = x[:, 0:]
       x = x.reshape(x.size(0), -1)
       encoded, decoded = self.forward(x)
       loss = self.loss_fn(decoded, x)

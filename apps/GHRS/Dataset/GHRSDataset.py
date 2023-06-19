@@ -16,10 +16,11 @@ from apps.GHRS.GraphFeature.GraphFeature_GraphTool import GraphFeature_GraphTool
 
 class GHRSDataset(pl.LightningDataModule):
   '''
+  Features: User informations
+  Target: Ratings about user
   Training & Validation Step  : MovieLens + DB
   Predction Step              : Only DB
   '''
-  # __occupation_dummy_prefix
   __GENDER_DUMMY_PREFIX: list = ['Gender_F', 'Gender_M']
   __AGE_DUMMY_PREFIX: list = [i for i in range(0, 6)]
   __OCCUPATION_DUMMY_PREFIX: list = ['Occupation_{}'.format(i) for i in range(11)]
@@ -27,75 +28,20 @@ class GHRSDataset(pl.LightningDataModule):
   def __init__(
       self,
       CFG: dict,
-      movieLensDir: str = './ml-1m',
-      DataBaseLoader: DataBaseLoader=None,
+      graph_features: pd.DataFrame
     ) -> None:
     super(GHRSDataset, self).__init__()
     self.CFG = CFG
-    self.movieLensDir = movieLensDir
-    self.dataBaseLoader = DataBaseLoader
+    self.graph_features = graph_features
     self.__prepare_data()
 
   def __len__(self):
     '''
     Return dim of datasets 'features' (exclude UID)
-    AutoEncoder객체 생성할 때는 GraphFeature들이 구해지지 않은 상태라 문제
     '''
-    return len(list(self.GraphFeature_df.columns)) - 1 # exclude UID
-  
-  def __get_movie_lens(self) -> Tuple[pd.DataFrame, pd.DataFrame]:
-    users_df = pd.read_csv(
-      os.path.join(self.movieLensDir, 'users.dat'),
-      sep='\::',
-      engine='python',
-      names=['UID', 'Gender', 'Age', 'Occupation', 'Zip'],
-      dtype={
-        'UID': 'str',
-        'Gender': 'str',
-        'Age': 'uint8',
-        'Occupation': 'uint8',
-        'Zip': 'string'
-      }
-    )
-    ratings_df = pd.read_csv(
-      os.path.join(self.movieLensDir, 'ratings.dat'),
-      sep='\::',
-      engine='python',
-      names=['UID', 'CID', 'Rating', 'Timestamp'],
-      dtype={
-        'UID': 'str',
-        'CID': 'uint16',
-        'Rating': 'uint8',
-        'Timestamp': 'uint64'
-      }
-    )
-    ratings_df['ContentType'] = 'MOVIELENS'
-    return users_df, ratings_df
-  
-  def __get_db_data(self, contentType: str) -> Tuple[pd.DataFrame, pd.DataFrame]:
-    '''
-    contentType: 'MOVIE' or 'TV' or 'ALL'
-    '''
-    __available_content_type = ['MOVIE', 'TV', 'ALL']
-    assert self.dataBaseLoader is not None, 'GHRSDataset.dataBaseLoader must be set'
-    if contentType not in __available_content_type:
-      raise ValueError('ContentType Error')
-    db_users = self.dataBaseLoader.getAllUsers()
-    if contentType == 'ALL':
-      db_ratings = self.dataBaseLoader.getAllReviews()
-    else:
-      db_ratings = self.dataBaseLoader.getReviewsByContentType(contentType)
-    return db_users, db_ratings
-  
-  def __sample_movie_lens(self,
-                          users_df: pd.DataFrame,
-                          ratings_df: pd.DataFrame,
-                          sample_rate: float=0.3,
-                          random_state: int=None) -> Tuple[pd.DataFrame, pd.DataFrame]:
-    sample_len = int(len(users_df) * sample_rate)
-    sampled_users_df = users_df.sample(sample_len, random_state=random_state)
-    sampled_ratings_df = ratings_df[ratings_df['UID'].isin(sampled_users_df['UID'])]
-    return sampled_users_df, sampled_ratings_df
+    len_ = len(list(self.graph_features.columns)) - 1
+    len_ = len_ + len(self.__GENDER_DUMMY_PREFIX) + len(self.__AGE_DUMMY_PREFIX) + len(self.__OCCUPATION_DUMMY_PREFIX) - 3
+    return len_
   
   def __convert2Categorical(self, df_X: pd.DataFrame, _X: str) -> pd.DataFrame:
     if _X == 'Occupation':
@@ -121,71 +67,35 @@ class GHRSDataset(pl.LightningDataModule):
     df_X = pd.concat([df_X, df_temp], axis=1)
     return df_X
     
-  def __preprocess_users_df(self, users_df: pd.DataFrame) -> pd.DataFrame:
+  def __preprocess_graph_features(self, graph_features: pd.DataFrame) -> pd.DataFrame:
     for occupation in OCCUPATION_MAP.items(): # Apply occupation reduction
-      users_df['Occupation'] = users_df['Occupation'].replace(occupation[0], occupation[1])
-    users_df = self.__convert2Categorical(users_df, 'Occupation')
-    users_df = self.__convert2Categorical(users_df, 'Gender')
+      graph_features['Occupation'] = graph_features['Occupation'].replace(occupation[0], occupation[1])
+    graph_features = self.__convert2Categorical(graph_features, 'Occupation')
+    graph_features = self.__convert2Categorical(graph_features, 'Gender')
     age_bins = [0, 10, 20, 30, 40, 50, 100]
     labels = ['0', '1', '2', '3', '4', '5']
-    users_df['bin'] = pd.cut(users_df['Age'], age_bins, labels=labels)
-    users_df['Age'] = users_df['bin']
-    users_df = self.__convert2Categorical(users_df, 'Age')
-    users_df = users_df.drop(columns='bin')
-    users_df = users_df.drop(columns='Zip')
-    return users_df
+    graph_features['bin'] = pd.cut(graph_features['Age'], age_bins, labels=labels)
+    graph_features['Age'] = graph_features['bin']
+    graph_features = self.__convert2Categorical(graph_features, 'Age')
+    graph_features = graph_features.drop(columns='bin')
+    graph_features = graph_features.drop(columns='Zip')
+    return graph_features
   
-  def __getTensorDataset(self, graphFeature: pd.DataFrame) -> TensorDataset:
-    whole_x = torch.Tensor(np.array(graphFeature.values[:, 1:], dtype=np.float32))
-    whole_y = torch.Tensor(graphFeature.index.to_list())
+  def __getTensorDataset(self, graph_features: pd.DataFrame) -> TensorDataset:
+    whole_x = torch.Tensor(np.array(graph_features.values[:, 1:], dtype=np.float32))
+    whole_y = torch.Tensor(graph_features.index.to_list())
 
     whole_dataset = TensorDataset(whole_x, whole_y)
     
     return whole_dataset
     
   def __prepare_data(self) -> None:
-    # Get DB Data
-    users_df, ratings_df = self.__get_db_data('ALL')
+    self.graph_features = self.__preprocess_graph_features(self.graph_features)
+
+    self.whole_dataset = self.__getTensorDataset(self.graph_features)
+
+    self.train_set, self.valid_set = random_split(self.whole_dataset, [(1 - self.CFG['val_rate']), self.CFG['val_rate']])
     
-    ml_users_df, ml_ratings_df = self.__get_movie_lens()
-    self.ml_users_df, self.ml_ratings_df = ml_users_df, ml_ratings_df
-    if self.CFG['sample_rate'] != 0. or self.CFG['train_ae']: # Use only DB Data
-      ml_users_df, ml_ratings_df = self.__sample_movie_lens(
-        ml_users_df,
-        ml_ratings_df,
-        sample_rate=self.CFG['sample_rate'],
-        random_state=1
-      )
-      users_df = pd.concat([users_df, ml_users_df], axis=0)
-      ratings_df = pd.concat([ratings_df, ml_ratings_df], axis=0)
-
-    users_df = users_df.reset_index()
-
-    users_df = self.__preprocess_users_df(users_df=users_df)
-
-    if 'index' in users_df.columns.to_list():
-      users_df = users_df.drop(['index'], axis=1)
-
-    self.users_df, self.ratings_df = users_df, ratings_df
-
-    self.GraphFeature = GraphFeature(self.CFG, users_df, ratings_df)
-    self.GraphFeature_df = self.GraphFeature()
-
-    whole_dataset = self.__getTensorDataset(self.GraphFeature_df)
-    self.whole_dataset = whole_dataset
-  
-    train_set, valid_set = random_split(whole_dataset, [(1 - self.CFG['val_rate']), self.CFG['val_rate']])
-    self.train_set, self.valid_set = train_set, valid_set
-
-  def update_graph_feature(self, users_df: pd.DataFrame, ratings_df: pd.DataFrame) -> None:
-    self.users_df, self.ratings_df = users_df, ratings_df
-    self.GraphFeature = GraphFeature(users_df, ratings_df)
-    self.GraphFeature_df = self.GraphFeature()
-    whole_dataset = self.__getTensorDataset(self.GraphFeature_df)
-    self.whole_dataset = whole_dataset
-    train_set, valid_set = random_split(whole_dataset, [(1 - self.CFG['val_rate']), self.CFG['val_rate']])
-    self.train_set, self.valid_set = train_set, valid_set
-
   def train_dataloader(self):
     '''
     MovieLens + DB Data splitted
