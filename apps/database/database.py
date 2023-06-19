@@ -12,7 +12,7 @@ from sqlmodel import (
   select
 )
 
-from models import *
+from apps.database.models import *
 
 class Database:
   def __init__(self):

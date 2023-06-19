@@ -1,7 +1,5 @@
-import pandas as pd
 from graph_tool.all import *
 from graph_tool import centrality
-from graph_tool import draw
 
 from tqdm import tqdm
 from typing import Dict
@@ -85,7 +83,7 @@ class GraphFeature_GraphTool(GraphFeature.GraphFeature):
   @TimeTaken
   def _calcEigenvectorCentrality(self):
     '''
-
+    Eigenvector Centrality: Metric for measuring the influence of a node in a network
     '''
     ec = centrality.eigenvector(self.graph)
     ec_dict = self.EC2dict(ec)
@@ -94,6 +92,9 @@ class GraphFeature_GraphTool(GraphFeature.GraphFeature):
   
   @TimeTaken
   def _calcKatzCentrality(self):
+    '''
+    Katz Centrality: Metric for measuring the centrality of a node within a graph based on the centrality of its neighbors
+    '''
     kz = centrality.katz(self.graph)
     kz_dict = self.VPM2dict(kz)
     self.concatGraphFeatureToUsers('KZ', kz_dict)

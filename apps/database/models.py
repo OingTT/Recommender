@@ -10,6 +10,7 @@ from sqlmodel import (
   SQLModel,
   Enum,
   Column,
+  Relationship,
 )
 
 __all__ = [
@@ -53,11 +54,11 @@ class User(BaseModel, config=Config, table=True):
   image: Optional[str] = None
   avatar: Optional[str] = None
   birth: Optional[datetime] = None
-  occupationId: Optional[int] = None
+  occupationId: Optional[int] = Field(foreign_key='Occupation.id')
   gender: Optional[str] = None
 
 class Review(BaseModel, config=Config, table=True):
-  userId: str = Field(primary_key=True)
+  userId: str = Field(primary_key=True, foreign_key='User.id')
   contentType: ContentType = Field(
     primary_key=True,
     sa_column=Column(
@@ -70,7 +71,7 @@ class Review(BaseModel, config=Config, table=True):
 
 class Account(BaseModel, config=Config, table=True):
   id: str = Field(primary_key=True)
-  userId: str
+  userId: str = Field(foreign_key='User.id')
   type: str
   provider: str
   providerAccoundId: str
@@ -83,18 +84,14 @@ class Account(BaseModel, config=Config, table=True):
   session_state: Optional[str] = None
   refresh_token_expires_in: Optional[int] = None
 
-class CategoriesOnUsers(BaseModel, config=Config, table=True):
-  userId: str = Field(primary_key=True)
-  categoryId: int = Field(primary_key=True)
-  order: int = None
-
 class Category(BaseModel, config=Config, table=True):
   id: int = Field(primary_key=True)
   name: str = Field(unique=True)
 
-class Genre(BaseModel, config=Config, table=True):
-  id: int = Field(primary_key=True)
-  name: str = Field(unique=True)
+class CategoriesOnUsers(BaseModel, config=Config, table=True):
+  userId: str = Field(primary_key=True, foreign_key='User.id')
+  categoryId: int = Field(primary_key=True, foreign_key='Category.id')
+  order: int = None
 
 class Occupation(BaseModel, config=Config, table=True):
   id: int = Field(primary_key=True)
@@ -109,10 +106,14 @@ class Subscription(BaseModel, config=Config, table=True):
   price: int = 0
   sharing: int = 0
 
+class Genre(BaseModel, config=Config, table=True):
+  id: int = Field(primary_key=True)
+  name: str = Field(unique=True)
+
 class _GenreToUser(BaseModel, config=Config, table=True):
-  A: int = Field(primary_key=True)
-  B: str = Field(primary_key=True)
+  A: int = Field(primary_key=True, foreign_key='Genre.id')
+  B: str = Field(primary_key=True, foreign_key='User.id')
 
 class _SubscriptionToUser(BaseModel, config=Config, table=True):
-  A: int = Field(primary_key=True)
-  B: str = Field(primary_key=True)
+  A: int = Field(primary_key=True, foreign_key='Subscription.id')
+  B: str = Field(primary_key=True, foreign_key='User.id')
