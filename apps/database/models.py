@@ -1,6 +1,5 @@
 import enum
 
-
 from typing import Optional
 from datetime import datetime
 from sqlalchemy.ext.declarative import declared_attr
@@ -26,6 +25,7 @@ __all__ = [
   'WatchStatus',
   '_GenreToUser',
   '_SubscriptionToUser',
+  'UserClustered',
 ]
 
 class BaseModel(SQLModel):
@@ -117,3 +117,7 @@ class _GenreToUser(BaseModel, config=Config, table=True):
 class _SubscriptionToUser(BaseModel, config=Config, table=True):
   A: int = Field(primary_key=True, foreign_key='Subscription.id')
   B: str = Field(primary_key=True, foreign_key='User.id')
+
+class UserClustered(BaseModel, config=Config, table=True):
+  id: str = Field(primary_key=True)
+  label: int = Field(nullable=False)

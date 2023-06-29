@@ -10,7 +10,7 @@ from typing import Tuple, List
 from pytorch_lightning.loggers import TensorBoardLogger, CSVLogger, WandbLogger
 from pytorch_lightning.callbacks import ModelCheckpoint
 
-from apps.Singleton import Singleton
+from apps.utils.Singleton import Singleton
 from apps.GHRS.Clustering.Clustering import Clustering
 from apps.utils.utils import save_pickle, load_pickle
 from apps.GHRS.Dataset.GHRSDataset import GHRSDataset

@@ -1,7 +1,7 @@
-import wandb
+# import wandb
 
-from apps.GHRS.GHRS import GHRS
-from apps.arg_parser import get_args
+# from apps.GHRS.GHRS import GHRS
+# from apps.arg_parser import get_args
 
 
 # cfgs = get_args()
@@ -34,4 +34,8 @@ from apps.arg_parser import get_args
 # cg = GHRSCalc(cfgs)
 # cg()
 
-import apps.database.models
+from apps.database.DatabaseAdapter import DatabaseAdapter
+
+dba = DatabaseAdapter()
+
+print(dba.getReviewByContentType('TV'))

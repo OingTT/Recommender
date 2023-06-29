@@ -5,7 +5,7 @@ import pandas as pd
 
 from typing import List, Dict
 
-from apps.Singleton import Singleton
+from apps.utils.Singleton import Singleton
 from apps.utils.utils import load_pickle
 from apps.GHRS.Dataset.DataBaseLoader import DataBaseLoader
 
@@ -145,8 +145,6 @@ class GHRSPred(metaclass=Singleton):
     for i in range(len(subscription_count)):
       ott = subscription_count['Subscription'].iloc[i]
       count = subscription_count['UID'].iloc[i]
-      print(ott)
-      print(type(ott))
       results.append(dict(
         OTT=int(ott),
         Count=int(count)

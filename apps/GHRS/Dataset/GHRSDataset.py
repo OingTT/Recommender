@@ -5,11 +5,9 @@ import numpy as np
 import pandas as pd
 import pytorch_lightning as pl
 
-from typing import Tuple
 from sklearn.preprocessing import LabelEncoder, OneHotEncoder
 from torch.utils.data import TensorDataset, DataLoader, random_split
 
-from apps.apis.TMDB import TMDB
 from apps.GHRS.Dataset.CONST import OCCUPATION_MAP
 from apps.GHRS.Dataset.DataBaseLoader import DataBaseLoader
 from apps.GHRS.GraphFeature.GraphFeature_GraphTool import GraphFeature_GraphTool as GraphFeature

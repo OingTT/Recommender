@@ -5,10 +5,11 @@ import pytorch_lightning as pl
 
 from time import sleep
 from datetime import datetime
-from typing import Tuple, List, Union
+from typing import Tuple, List
 from pytorch_lightning.loggers import TensorBoardLogger, CSVLogger, WandbLogger, Logger
 
-from apps.Singleton import Singleton
+from apps.database.DatabaseAdapter import DatabaseAdapter
+from apps.utils.Singleton import Singleton
 from apps.utils.utils import save_pickle
 from apps.GHRS.Dataset.DataBaseLoader import DataBaseLoader
 from apps.GHRS.Dataset.MovieLensLoader import MovieLensLoader
@@ -34,15 +35,13 @@ class GHRSCalc(metaclass=Singleton):
   '''
   def __init__(self, CFG: dict):
     self.CFG = CFG
-
-  def __call__(self):
-    self.databaseLoader = DataBaseLoader()
+    self.databaseAdapter = DatabaseAdapter()
+    self.databaseLoader = DataBaseLoader(databaseAdapter=self.databaseAdapter)
     self.movielensLoader = MovieLensLoader(CFG=self.CFG)
 
+  def __call__(self):
     self.graphFeature = GraphFeature(CFG=self.CFG)
     while True:
-      print('GHRS Calculate')
-
       db_data = self.__get_db_data()
       if not db_data:
         continue
@@ -74,9 +73,15 @@ class GHRSCalc(metaclass=Singleton):
       
       clustered = pd.concat([users['UID'], clustered], axis=1)
 
-      save_pickle(clustered, os.path.join(self.CFG['preprocessed_data_dir'], 'Clustered.pkl'))
+      self.save_clustered(clustered)
 
-      sleep(10)
+  def save_clustered(self, clustered: pd.DataFrame):
+    clustered = clustered.rename(columns={'UID': 'userId', 'cluster_label': 'clusterId'})
+    clustered = clustered.astype({'userId': 'str', 'clusterId': 'int'})
+    for _, row in clustered.iterrows():
+      userId = row['userId']
+      clusterId = row['clusterId']
+      self.databaseAdapter.insertUserClustered(userId=userId, clusterId=clusterId)
 
   def __load_best_model(self) -> pl.LightningModule:
     chkps = dict()
@@ -116,7 +121,7 @@ class GHRSCalc(metaclass=Singleton):
       # WandbLogger(project=f'GHRS', name=modelName)
     ]
   
-  def __get_db_data(self) -> Union[Tuple[pd.DataFrame, pd.DataFrame], bool]:
+  def __get_db_data(self) -> Tuple[pd.DataFrame, pd.DataFrame] | bool:
     users = self.databaseLoader.getAllUsers()
     ratings = self.databaseLoader.getAllReviews()
     if users.empty or ratings.empty:
