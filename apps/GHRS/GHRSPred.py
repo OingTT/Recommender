@@ -14,9 +14,9 @@ class GHRSPred(metaclass=Singleton):
 
     self.databaseLoader = DataBaseLoader()
 
-  def __load_clustered(self) -> pd.DataFrame:
-    userClustered = self.databaseLoader.getAllUserClustered()
-    userClustered = self.databaseLoader.databaseAdapter.recordsToDataFrame(userClustered)
+  def __load_clustered(self, target_UID: str) -> pd.DataFrame:
+    target_cluster_label = int(self.databaseLoader.getUserClusteredByUserId(id=target_UID)['label'].iloc[0])
+    userClustered = self.databaseLoader.getUserClusteredByClusterLabel(cluster_label=target_cluster_label)
     userClustered = userClustered.rename(columns={'id': 'UID', 'label': 'cluster_label'})
     return userClustered
 

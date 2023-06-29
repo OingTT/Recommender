@@ -32,3 +32,8 @@ class DataBaseLoader(DataLoader, metaclass=Singleton):
   def getAllOTT(self):
     return self.databaseAdapter.getAllOTT()
   
+  def getUserClusteredByUserId(self, id: str) -> pd.DataFrame:
+    return self.databaseAdapter.getUserClusteredByUserId(id=id)
+  
+  def getUserClusteredByClusterLabel(self, cluster_label: int) -> pd.DataFrame:
+    return self.databaseAdapter.getUserClusteredByClusterLabel(cluster_label=cluster_label)

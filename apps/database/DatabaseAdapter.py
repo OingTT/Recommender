@@ -51,6 +51,12 @@ class DatabaseAdapter:
   def getAllUserClustered(self) -> DataFrame:
     return self.recordsToDataFrame(self.database.getAllUserClustered())
   
+  def getUserClusteredByUserId(self, id: str) -> DataFrame:
+    return self.recordsToDataFrame(self.database.findUserClusteredByField(field_name='id', field_value=id))
+  
+  def getUserClusteredByClusterLabel(self, cluster_label: int) -> DataFrame:
+    return self.recordsToDataFrame(self.database.findUserClusteredByField(field_name='label', field_value=cluster_label))
+  
   def insertManyUserClustered(self, user_clustered: DataFrame) -> None:
     self.database.insertManyUserClustered(user_clustered=user_clustered)
 

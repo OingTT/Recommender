@@ -161,6 +161,14 @@ class Database:
     '''
     return self.__findRecordsByField(Review, field_name, field_value)
   
+  def findUserClusteredByField(self, field_name: str, field_value: str) -> list[UserClustered]:
+    '''
+    Find userClustered by specified field and value\n
+    usage: findUserClusteredByField(FIELD_NAME, FIELD_VALUE)\n
+    ex) findUserClusteredByField('id', '1') -> [UserClustered(id='1', ...), UserClustered(id='1', ...), ...]
+    '''
+    return self.__findRecordsByField(UserClustered, field_name, field_value)
+  
   def insertUserClustered(self, user_clustered: UserClustered) -> None:
     '''
     Insert single userClustered to table\n
