@@ -6,7 +6,6 @@ import pandas as pd
 from typing import List, Dict
 
 from apps.utils.Singleton import Singleton
-from apps.utils.utils import load_pickle
 from apps.GHRS.Dataset.DataBaseLoader import DataBaseLoader
 
 class GHRSPred(metaclass=Singleton):
@@ -15,17 +14,25 @@ class GHRSPred(metaclass=Singleton):
 
     self.databaseLoader = DataBaseLoader()
 
-  def __get_target_cluster_uids(self, target_UID: str) -> List[str]:
-    clustered_path = os.path.join(self.CFG['preprocessed_data_dir'], 'Clustered.pkl')
+  def __load_clustered(self) -> pd.DataFrame:
+    userClustered = self.databaseLoader.getAllUserClustered()
+    userClustered = self.databaseLoader.databaseAdapter.recordsToDataFrame(userClustered)
+    userClustered = userClustered.rename(columns={'id': 'UID', 'label': 'cluster_label'})
+    return userClustered
 
-    clustered: pd.DataFrame = load_pickle(clustered_path)
+  def __get_target_cluster_uids(self, target_UID: str) -> List[str]:
+    '''
+    타겟 유저가 속해있는 클러스터에 있는 타 유저들의 UID를 반환
+    '''
+    clustered: pd.DataFrame = self.__load_clustered()
 
     grouped = clustered.groupby('cluster_label', as_index=False)
 
-    # target_cluster => cluster label that UID is in
+    # target_cluster => cluster's label that UID is in
     target_cluster = None
     for cluster_label, indices in grouped.groups.items():
-      user_in_cluster = clustered['UID'][indices].values.tolist()
+      user_in_cluster: pd.Series = clustered['UID'][indices]
+      user_in_cluster = user_in_cluster.values.tolist()
       if target_UID in user_in_cluster:
         target_cluster = cluster_label
         break
@@ -79,7 +86,7 @@ class GHRSPred(metaclass=Singleton):
 
     return self.__content_prediction_to_json(target_cluster_rating_mean, contentType)
 
-  def predict_ott_comb(self, target_UID: str, top_N: int=3):
+  def predict_ott_comb(self, target_UID: str, topN: int=3):
     # target_cluster_uids => uids of target cluster
     target_cluster_uids = self.__get_target_cluster_uids(target_UID=target_UID)
 
@@ -93,7 +100,7 @@ class GHRSPred(metaclass=Singleton):
 
     combinations = dict()
     for row_idx in range(len(subscription['UID'].unique())):
-      user = subscription[subscription['UID'] == subscription['UID'].iloc[row_idx]]
+      user: pd.DataFrame = subscription[subscription['UID'] == subscription['UID'].iloc[row_idx]]
       user_sub = user['Subscription'].values
       # if len(user_sub) == 1:
       #   continue
@@ -106,7 +113,7 @@ class GHRSPred(metaclass=Singleton):
     comb_cnt = {k: v for k, v in sorted(combinations.items(), key=lambda item: item[1], reverse=True)}
     comb = [json.loads(key) for key, value in comb_cnt.items()]
     
-    return comb[: top_N]
+    return comb[: topN]
   
   def predict_ott(self, target_UID: str, topN: int=20) -> List[dict]:
     # target_cluster_uids => uids of target cluster

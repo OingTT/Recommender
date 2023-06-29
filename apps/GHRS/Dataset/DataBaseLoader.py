@@ -20,10 +20,15 @@ class DataBaseLoader(DataLoader, metaclass=Singleton):
     return self.databaseAdapter.getAllReviews()
 
   def getAllUsers(self) -> pd.DataFrame:
-    return self.databaseAdapter.getAllUsers()
+    users = self.databaseAdapter.getAllUsers()
+    return users[['id', 'gender', 'age', 'occupationId']]
   
   def getAllUserSubscribe(self, ) -> pd.DataFrame:
     return self.databaseAdapter.getAllUsersSubscribe()
   
+  def getAllUserClustered(self):
+    return self.databaseAdapter.getAllUserClustered()
+  
   def getAllOTT(self):
     return self.databaseAdapter.getAllOTT()
+  

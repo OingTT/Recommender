@@ -23,7 +23,7 @@ class Database:
 
     if CFG.get('debug'):
       DB_URL = os.getenv("WHATSUBS_TEST_DB_URL")
-      ECHO = True
+      ECHO = False
       # DB_URL = sqlalchemy.engine.URL.create(
       #   drivername='mysql',
       #   username=os.getenv("WHATSUBS_TEST_DB_USERNAME"),
@@ -105,23 +105,23 @@ class Database:
         session.add(record)
       session.commit()
 
-  def __updateRecordByField(self, record: SQLModel, **kargs) -> None:
+  def __updateRecordByField(self, record: SQLModel, query_field_name: str) -> None:
     '''
     Update single record to table\n
-    usage: __updateRecordByFields(SQLModel)\n
-    ex) __updateRecordByFields(SQLModel(id='1', ...))
+    usage: __updateRecordByFields(SQLModel, QUERY_FIELD_NAME, QUERY_FIELD_VALUE)\n
+    ex) __updateRecordByFields(SQLModel(id='1', ...), query_field_name='id', query_field_value='1')
     '''
-    assert len(kargs) == 1, 'Only one field can be specified'
     with Session(self.engine) as session:
       statement: Update = update(record.__class__)
+      statement = statement.where(record.__class__.__getattribute__(record.__class__, query_field_name)\
+                                  == record.__getattribute__(query_field_name))
       for field_name, field_value in record.__dict__.items():
         if field_name == '_sa_instance_state':
           continue
         statement = statement.values({field_name: field_value})
-      for field_name, field_value in kargs.items():
-        statement = statement.where(record.__getattribute__(field_name) == field_value)
-      print(statement)
-      session.execute(statement)
+      result = session.execute(statement)
+      if result.__dict__.get('rowcount') == 0:
+        raise ValueError(f'No such row with {query_field_name}={record.__getattribute__(query_field_name)}')
       session.commit()
   
   def getAllUsers(self) -> list[User]:
@@ -135,6 +135,9 @@ class Database:
   
   def getAllOTT(self) -> list[Subscription]:
     return self.__getAllRecords(Subscription)
+  
+  def getAllUserClustered(self) -> list[UserClustered]:
+    return self.__getAllRecords(UserClustered)
   
   def __findRecordByField(self, table: SQLModel, field_name: str, field_value: str) -> SQLModel:
     return self.__findRecordByFields(table, **{field_name: field_value})
@@ -157,19 +160,27 @@ class Database:
     ex) findReviewsByField('userId', '1') -> [Review(id='1', ...), Review(id='1', ...), ...]
     '''
     return self.__findRecordsByField(Review, field_name, field_value)
+  
+  def insertUserClustered(self, user_clustered: UserClustered) -> None:
+    '''
+    Insert single userClustered to table\n
+    usage: insertUserClustered(UserClustered(id=USER_ID, label=CLUSTERED_LABEL))\n
+    ex) insertUserClustered(UserClustered(id='1', label=1))
+    '''
+    self.__insertRecord(user_clustered)
 
-  def insertManyUserClustered(self, userClustered: list[UserClustered]) -> None:
+  def insertManyUserClustered(self, user_clustered: list[UserClustered]) -> None:
     '''
     Insert single userClustered to table\n
     usage: insertUserClustered(USER_ID, CLUSTERED_ID)\n
     ex) insertUserClustered(id='1', ...)
     '''
-    self.__insertManyRecords(userClustered)
+    self.__insertManyRecords(user_clustered)
 
-  def updateUserClusteredByUserId(self, userClustered: UserClustered) -> None:
+  def updateUserClusteredByUserId(self, user_clustered: UserClustered) -> None:
     '''
     Update single userClustered to table\n
     usage: updateUserClustered(USER_ID, CLUSTERED_ID)\n
     ex) updateUserClustered(id='1', ...)
     '''
-    self.__updateRecordByField(userClustered, id=userClustered.id)
+    self.__updateRecordByField(user_clustered, query_field_name='id')

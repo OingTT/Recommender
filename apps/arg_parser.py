@@ -13,6 +13,7 @@ def get_args():
   parser.add_argument('--val-rate', action='store', help='validation rate', default=0.3, type=float)
   parser.add_argument('--max-epoch', action='store', help='maximum epoch', default=100, type=int)
   parser.add_argument('--ml-sample-rate', action='store', help='movie lens sampling rate', default=0, type=int)
+  parser.add_argument('--optimal-k-method', action='store', help='Method about find optimal K (Elbow, Silhouette, Gap)', default='Gap', type=str)
   parser.add_argument('--alpha-coefficient', action='store', help='GHRS alpha coefficient', default=0.005, type=int)
   parser.add_argument('--log-dir', action='store', help='Directory path save log', default='./train_log', type=str)
   parser.add_argument('--movie-lens-dir', action='store', help='Directory path contain movie lens data', default='./ml-1m', type=str)

@@ -3,14 +3,12 @@ import os
 import pandas as pd
 import pytorch_lightning as pl
 
-from time import sleep
 from datetime import datetime
 from typing import Tuple, List
 from pytorch_lightning.loggers import TensorBoardLogger, CSVLogger, WandbLogger, Logger
 
 from apps.database.DatabaseAdapter import DatabaseAdapter
 from apps.utils.Singleton import Singleton
-from apps.utils.utils import save_pickle
 from apps.GHRS.Dataset.DataBaseLoader import DataBaseLoader
 from apps.GHRS.Dataset.MovieLensLoader import MovieLensLoader
 from apps.GHRS.Dataset.GHRSDataset import GHRSDataset
@@ -23,9 +21,7 @@ from apps.GHRS.GraphFeature.GraphFeature_GraphTool \
 
 class GHRSCalc(metaclass=Singleton):
   '''
-  Latent-Matrix 계산 및 저장 | Cluetered-Matrix 계산 및 저장
-  나중에는 DB에 저장
-  실제 예측은 다른 모듈에서 수행
+  Clueter-Matrix 계산 및 저장
   1. Database에 있는 유저, 평점 정보 불러오기 
       (Autuencoder 훈련 시에는 MovieLens포함) -> DataFrame
   2. Graph Feature 구하기 -> DataFrame
@@ -35,62 +31,79 @@ class GHRSCalc(metaclass=Singleton):
   '''
   def __init__(self, CFG: dict):
     self.CFG = CFG
-    self.databaseAdapter = DatabaseAdapter()
+    self.databaseAdapter = DatabaseAdapter(CFG=self.CFG)
     self.databaseLoader = DataBaseLoader(databaseAdapter=self.databaseAdapter)
     self.movielensLoader = MovieLensLoader(CFG=self.CFG)
+    self.clustering = Clustering(self.CFG)
 
   def __call__(self):
     self.graphFeature = GraphFeature(CFG=self.CFG)
-    while True:
-      db_data = self.__get_db_data()
-      if not db_data:
-        continue
-      else:
-        users, ratings = db_data
 
-      if self.CFG['ml_sample_rate'] != 0:
-        ml_users, ml_ratings = self.__get_ml_data()
+    users, ratings = self.__get_data()
+    
+    graph_features = self.__get_graph_features(users, ratings)
+
+    ghrs_datamodule = GHRSDataset(self.CFG, graph_features)
+    
+    autoencoder = self.__load_best_model()
+
+    autoencoder_trainer = pl.Trainer(
+      accelerator=self.CFG['device'],
+      logger=self.__init_loggers(),
+      default_root_dir="./pretrained_model",
+      log_every_n_steps=1,
+    )
+
+    latent_matrix = self.__get_latent_matrix(autoencoder, autoencoder_trainer, ghrs_datamodule)
+
+    clustered = self.__get_clusters(self.clustering, latent_matrix)
+    
+    clustered = pd.concat([users['id'], pd.Series(clustered, name='cluster_label')], axis=1)
+
+    self.__store_clustered(clustered)
+
+  def __get_data(self) -> Tuple[pd.DataFrame, pd.DataFrame]:
+    db_data = self.__get_db_data()
+    if not db_data:
+      raise ValueError('Cannot get data from database')
+    else:
+      users, ratings = db_data
+
+    if self.CFG['ml_sample_rate'] != 0:
+      ml_data = self.__get_ml_data()
+      if not ml_data:
+        raise ValueError('Cannot get data from movielens')
+      else:
+        ml_users, ml_ratings = ml_data
         users = pd.concat([users, ml_users], axis=0)
         ratings = pd.concat([ratings, ml_ratings], axis=0)
+    
+    return users, ratings
 
-      graph_features = self.__get_graph_features(users, ratings)
-      
-      ghrs_datamodule = GHRSDataset(self.CFG, graph_features)
-
-      autoencoder = self.__load_best_model()
-      autoencoder_trainer = pl.Trainer(
-        accelerator=self.CFG['device'],
-        logger=self.__init_loggers(),
-        default_root_dir="./pretrained_model",
-        log_every_n_steps=1,
-      )
-
-      latent_matrix = self.__get_latent_matrix(autoencoder, autoencoder_trainer, ghrs_datamodule)
-
-      clustering = Clustering()
-
-      clustered = self.__get_clusters(clustering, latent_matrix)
-      
-      clustered = pd.concat([users['UID'], clustered], axis=1)
-
-      self.save_clustered(clustered)
-
-  def save_clustered(self, clustered: pd.DataFrame):
-    clustered = clustered.rename(columns={'UID': 'userId', 'cluster_label': 'clusterId'})
-    clustered = clustered.astype({'userId': 'str', 'clusterId': 'int'})
+  def __store_clustered(self, clustered: pd.DataFrame):
     for _, row in clustered.iterrows():
-      userId = row['userId']
-      clusterId = row['clusterId']
-      self.databaseAdapter.insertUserClustered(userId=userId, clusterId=clusterId)
+      id = str(row['id'])
+      label = int(row['cluster_label'])
+      self.databaseAdapter.updateUserClusteredByUserId(id=id, label=label)
 
-  def __load_best_model(self) -> pl.LightningModule:
+  def __train_autoencoder(
+      self,
+      autoencoder_trainer: pl.Trainer,
+      ghrs_datamodule: pl.LightningDataModule
+    ) -> AutoEncoder:
+    raise NotImplementedError('__train_autoencoder is not implemented yet')
+    autoencoder = AutoEncoder(CFG=self.CFG)
+    autoencoder_trainer.fit(autoencoder, datamodule=ghrs_datamodule)
+    return autoencoder_trainer.lightning_module
+  
+  def __load_best_model(self) -> AutoEncoder:
     chkps = dict()
     pretrained_model_dir: str = self.CFG['pretrained_model_dir']
 
     model_dir_list = os.listdir(pretrained_model_dir)
 
     if len(model_dir_list) == 0:
-      raise FileNotFoundError
+      raise FileNotFoundError('There is no pretrained model in pretrained_model_dir')
 
     for chkp in model_dir_list:
       if not chkp.startswith('Pretrained-epoch'):
@@ -130,10 +143,12 @@ class GHRSCalc(metaclass=Singleton):
 
   def __get_ml_data(self) -> Tuple[pd.DataFrame, pd.DataFrame]:
     users, ratings = self.movielensLoader()
+    if users.empty or ratings.empty:
+      return False
     return users, ratings
 
   def __get_graph_features(self, users: pd.DataFrame, ratings: pd.DataFrame) -> pd.DataFrame:
-    graph_features = self.graphFeature(users, ratings, self.CFG['alpha_coefficient'])
+    graph_features = self.graphFeature.calculate(users, ratings, self.CFG['alpha_coefficient'])
     return graph_features
   
   def __get_latent_matrix(
@@ -153,5 +168,4 @@ class GHRSCalc(metaclass=Singleton):
     return latent_matrix
 
   def __get_clusters(self, clustering: Clustering, latent_matrix: pd.DataFrame):
-    clustered = clustering(latent_matrix)
-    return clustered
+    return clustering(latent_matrix)

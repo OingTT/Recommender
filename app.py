@@ -1,15 +1,14 @@
 import uvicorn
 
-from threading import Thread
-
 from apps.GHRS.GHRSPred import GHRSPred
-from apps.GHRS.GHRSCalc import GHRSCalc
 from apps.arg_parser import get_args
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 cfgs = get_args()
+
+cfgs['debug'] = True
 
 ghrs_pred = GHRSPred(CFG=cfgs)
 

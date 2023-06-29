@@ -8,9 +8,7 @@ from abc import *
 from time import time
 from tqdm import tqdm
 from typing import List, Union, SupportsInt, SupportsFloat
-
-import graph_tool as gt
-from graph_tool import draw
+from warnings import warn
 
 def TimeTaken(func):
   def wrapper(*args, **kargs):
@@ -31,7 +29,7 @@ class GraphFeature(metaclass=ABCMeta):
 
     self.graph_feature_calculators = self.__get_graph_feature_calculators
 
-  def __call__(self, users: pd.DataFrame, ratings: pd.DataFrame, alpha_coef: float=0.005) -> pd.DataFrame:
+  def calculate(self, users: pd.DataFrame, ratings: pd.DataFrame, alpha_coef: float=0.005) -> pd.DataFrame:
     self.users = users
     self.ratings = ratings
     
@@ -44,14 +42,17 @@ class GraphFeature(metaclass=ABCMeta):
 
     return self.graphFeature_df
 
+  def __call__(self, users: pd.DataFrame, ratings: pd.DataFrame, alpha_coef: float=0.005) -> pd.DataFrame:
+    warn('GraphFeature.__call__ is deprecated. Use GraphFeature.calculate instead', DeprecationWarning, stacklevel=2)
+    return self.calculate(users, ratings, alpha_coef)
+
   def _getGraph(self, alpha_coef):
     pairs = self._extendPairs()
     edge_list = self._getEdgeList(pairs, alpha_coef)
     self._addGraphEdges(edge_list)
 
   def _extendPairs(self) -> List:
-    grouped = self.ratings.groupby(['CID', 'Rating'])
-    print(grouped.groups)
+    grouped = self.ratings.groupby(['contentId', 'rating'])
     pairs = list()
     for _, group in tqdm(grouped, desc='_getGraph::extend'):
       for comb in itertools.combinations(group.index, 2):
@@ -90,6 +91,5 @@ class GraphFeature(metaclass=ABCMeta):
     
     graph_features = self.users[self.users.columns[0: ]]
     graph_features = graph_features.fillna(0)
-    print('GraphFeatures\n', graph_features)
     return graph_features
 

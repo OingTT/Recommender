@@ -1,11 +1,12 @@
-from graph_tool.all import *
-from graph_tool import centrality
+import apps.GHRS.GraphFeature.GraphFeature as GraphFeature
 
 from tqdm import tqdm
 from typing import Dict
-import apps.GHRS.GraphFeature.GraphFeature as GraphFeature
-
+from warnings import warn
+from graph_tool.all import *
+from graph_tool import centrality
 from apps.GHRS.GraphFeature.GraphFeature import TimeTaken
+
 
 class GraphFeature_GraphTool(GraphFeature.GraphFeature):
   def _addGraphEdges(self, edge_list: list) -> None:
@@ -95,6 +96,8 @@ class GraphFeature_GraphTool(GraphFeature.GraphFeature):
     '''
     Katz Centrality: Metric for measuring the centrality of a node within a graph based on the centrality of its neighbors
     '''
+    warn('Katz Centrality is not implemented yet', stacklevel=2)
+    return
     kz = centrality.katz(self.graph)
     kz_dict = self.VPM2dict(kz)
     self.concatGraphFeatureToUsers('KZ', kz_dict)

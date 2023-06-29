@@ -47,7 +47,7 @@ class WatchStatus(enum.Enum):
   WANT_TO_WATCH: int = 2
 
 class User(BaseModel, config=Config, table=True):
-  id: str = Field(primary_key=True)
+  id: str = Field(primary_key=True, unique=True)
   name: Optional[str] = None
   email: Optional[str] = Field(unique=True)
   emailVerified: Optional[datetime] = None
@@ -85,7 +85,7 @@ class Account(BaseModel, config=Config, table=True):
   refresh_token_expires_in: Optional[int] = None
 
 class Category(BaseModel, config=Config, table=True):
-  id: int = Field(primary_key=True)
+  id: int = Field(primary_key=True, unique=True)
   name: str = Field(unique=True)
 
 class CategoriesOnUsers(BaseModel, config=Config, table=True):
@@ -94,11 +94,11 @@ class CategoriesOnUsers(BaseModel, config=Config, table=True):
   order: int = None
 
 class Occupation(BaseModel, config=Config, table=True):
-  id: int = Field(primary_key=True)
+  id: int = Field(primary_key=True, unique=True)
   name: str = Field(unique=True)
 
 class Subscription(BaseModel, config=Config, table=True):
-  id: int = Field(primary_key=True)
+  id: int = Field(primary_key=True, unique=True)
   key: str = Field(unique=True)
   name: str = Field(unique=True)
   providerId: Optional[int] = None
@@ -107,7 +107,7 @@ class Subscription(BaseModel, config=Config, table=True):
   sharing: int = 0
 
 class Genre(BaseModel, config=Config, table=True):
-  id: int = Field(primary_key=True)
+  id: int = Field(primary_key=True, unique=True)
   name: str = Field(unique=True)
 
 class _GenreToUser(BaseModel, config=Config, table=True):
@@ -119,5 +119,5 @@ class _SubscriptionToUser(BaseModel, config=Config, table=True):
   B: str = Field(primary_key=True, foreign_key='User.id')
 
 class UserClustered(BaseModel, config=Config, table=True):
-  id: str = Field(primary_key=True)
+  id: str = Field(primary_key=True, foreign_key='User.id')
   label: int = Field(nullable=False)

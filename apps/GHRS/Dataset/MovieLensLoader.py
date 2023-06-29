@@ -10,11 +10,13 @@ class MovieLensLoader:
   def __call__(self) -> Tuple[pd.DataFrame, pd.DataFrame]:
     users = self.__get_ml_users()
     ratings = self.__get_ml_ratings()
-
-    sample_rate = self.CFG.get('ml_smple_rate', 0)
-    if sample_rate != 1:
-      random_state = self.CFG.get('random_state', 1)
-      self.__movie_lens_sampler(users, ratings, sample_rate, random_state)
+    try:
+      sample_rate = self.CFG.get('ml_smple_rate', 0)
+      if sample_rate != 1:
+        random_state = self.CFG.get('random_state', 1)
+        self.__movie_lens_sampler(users, ratings, sample_rate, random_state)
+    except Exception:
+      pass
 
     return users, ratings  
 
@@ -31,34 +33,42 @@ class MovieLensLoader:
   
   def __get_ml_users(self) -> pd.DataFrame:
     users_path = os.path.join(self.CFG['movielens_dir'], 'users.dat')
-    users = pd.read_csv(
-      users_path,
-      sep='\::',
-      engine='python',
-      names=['UID', 'Gender', 'Age', 'Occupation', 'Zip'],
-      dtype={
-        'UID': 'str',
-        'Gender': 'str',
-        'Age': 'uint8',
-        'Occupation': 'uint8',
-        'Zip': 'string'
-      }
-    )
-    return users
+    try:
+      users = pd.read_csv(
+        users_path,
+        sep='\::',
+        engine='python',
+        names=['UID', 'Gender', 'Age', 'Occupation', 'Zip'],
+        dtype={
+          'UID': 'str',
+          'Gender': 'str',
+          'Age': 'uint8',
+          'Occupation': 'uint8',
+          'Zip': 'string'
+        }
+      )
+    except Exception:
+      users = pd.DataFrame()
+    finally:
+      return users
   
   def __get_ml_ratings(self) -> pd.DataFrame:
     ratings_path = os.path.join(self.CFG['movielens_dir'], 'ratings.dat')
-    ratings = pd.read_csv(
-      filepath_or_buffer=ratings_path,
-      sep='\::',
-      engine='python',
-      names=['UID', 'CID', 'Rating', 'Timestamp'],
-      dtype={
-        'UID': 'str',
-        'CID': 'uint16',
-        'Rating': 'uint8',
-        'Timestamp': 'uint64'
-      }
-    )
-    ratings['ContentType'] = 'MOVIELENS'
-    return ratings
+    try:
+      ratings = pd.read_csv(
+        filepath_or_buffer=ratings_path,
+        sep='\::',
+        engine='python',
+        names=['UID', 'CID', 'Rating', 'Timestamp'],
+        dtype={
+          'UID': 'str',
+          'CID': 'uint16',
+          'Rating': 'uint8',
+          'Timestamp': 'uint64'
+        }
+      )
+      ratings['ContentType'] = 'MOVIELENS'
+    except Exception:
+      ratings = pd.DataFrame()
+    finally:
+      return ratings

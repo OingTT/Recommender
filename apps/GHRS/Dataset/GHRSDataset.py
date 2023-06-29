@@ -42,21 +42,20 @@ class GHRSDataset(pl.LightningDataModule):
     return len_
   
   def __convert2Categorical(self, df_X: pd.DataFrame, _X: str) -> pd.DataFrame:
-    if _X == 'Occupation':
+    if _X == 'occupationId':
       PREFIX = self.__OCCUPATION_DUMMY_PREFIX
-    elif _X == 'Gender':
+    elif _X == 'gender':
       PREFIX = self.__GENDER_DUMMY_PREFIX
-      df_X['Gender'] = df_X['Gender'].replace('F', '0')
-      df_X['Gender'] = df_X['Gender'].replace('M', '1')
-    elif _X == 'Age':
+      df_X['gender'] = df_X['gender'].replace('F', '0')
+      df_X['gender'] = df_X['gender'].replace('M', '1')
+    elif _X == 'age':
       PREFIX = self.__AGE_DUMMY_PREFIX
-      
+    
     values = np.array(df_X[_X])
     # integer encode
     label_encoder = LabelEncoder()
     label_encoder = label_encoder.fit([_ for _ in range(len(PREFIX))])
     integer_encoded = label_encoder.transform(values)
-    # binary encode
     onehot_encoder = OneHotEncoder(categories=[[_ for _ in range(len(PREFIX))]], sparse_output=False)
     integer_encoded = integer_encoded.reshape(len(integer_encoded), 1)
     onehot_encoded = onehot_encoder.fit_transform(integer_encoded)
@@ -67,16 +66,16 @@ class GHRSDataset(pl.LightningDataModule):
     
   def __preprocess_graph_features(self, graph_features: pd.DataFrame) -> pd.DataFrame:
     for occupation in OCCUPATION_MAP.items(): # Apply occupation reduction
-      graph_features['Occupation'] = graph_features['Occupation'].replace(occupation[0], occupation[1])
-    graph_features = self.__convert2Categorical(graph_features, 'Occupation')
-    graph_features = self.__convert2Categorical(graph_features, 'Gender')
+      graph_features['occupationId'] = graph_features['occupationId'].replace(occupation[0], occupation[1])
+    graph_features = self.__convert2Categorical(graph_features, 'occupationId')
+    graph_features = self.__convert2Categorical(graph_features, 'gender')
     age_bins = [0, 10, 20, 30, 40, 50, 100]
     labels = ['0', '1', '2', '3', '4', '5']
-    graph_features['bin'] = pd.cut(graph_features['Age'], age_bins, labels=labels)
-    graph_features['Age'] = graph_features['bin']
-    graph_features = self.__convert2Categorical(graph_features, 'Age')
+    graph_features['bin'] = pd.cut(graph_features['age'], age_bins, labels=labels)
+    graph_features['age'] = graph_features['bin']
+    graph_features = self.__convert2Categorical(graph_features, 'age')
     graph_features = graph_features.drop(columns='bin')
-    graph_features = graph_features.drop(columns='Zip')
+    graph_features = graph_features.drop(columns='Zip', errors='ignore')
     return graph_features
   
   def __getTensorDataset(self, graph_features: pd.DataFrame) -> TensorDataset:
