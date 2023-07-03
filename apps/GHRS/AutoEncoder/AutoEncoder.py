@@ -37,7 +37,7 @@ class AutoEncoder(pl.LightningModule):
         nn.Sigmoid(),
       )
 
-    def _log_dict(self, log_dict):
+    def _log_dict(self, log_dict: dict):
       self.log_dict(
         dictionary=log_dict,
         prog_bar=True,
@@ -45,23 +45,23 @@ class AutoEncoder(pl.LightningModule):
         on_epoch=True  
       )
 
-    def _freezeLayer(self, layer: nn.Module) -> None:
-      for param in layer.parameters():
-        param.requires_grad = False
+    # def _freezeLayer(self, layer: nn.Module) -> None:
+    #   for param in layer.parameters():
+    #     param.requires_grad = False
 
-    def getFreezedEncoder(self) -> nn.Module:
-       self._freezeLayer(self.Encoder)
-       return deepcopy(self.Encoder)
+    # def getFreezedEncoder(self) -> nn.Module:
+    #    self._freezeLayer(self.Encoder)
+    #    return deepcopy(self.Encoder)
     
-    @torch.no_grad()
-    def getLatnetVector(self, x: torch.Tensor) -> torch.Tensor:
-      '''
-      TODO Input data 에서의 UID와 Latent Vector를 맵핑하여 반환하도록 구현
-      -> Tuple[UID, Latent Vector]
-      '''
-      self.Encoder.eval()
-      latent_vec = self.Encoder(x)
-      return dict(input=x, latent_vec=latent_vec)
+    # @torch.no_grad()
+    # def getLatnetVector(self, x: torch.Tensor) -> torch.Tensor:
+    #   '''
+    #   TODO Input data 에서의 UID와 Latent Vector를 맵핑하여 반환하도록 구현
+    #   -> Tuple[UID, Latent Vector]
+    #   '''
+    #   self.Encoder.eval()
+    #   latent_vec = self.Encoder(x)
+    #   return dict(input=x, latent_vec=latent_vec)
     
     def forward(self, x: torch.Tensor) -> Tuple[torch.Tensor, torch.Tensor]:
       encoded = self.Encoder(x)
@@ -75,17 +75,17 @@ class AutoEncoder(pl.LightningModule):
       loss = self.loss_fn(decoded, x)
       return loss, encoded, decoded
     
-    def training_step(self, batch, batch_idx):
+    def training_step(self, batch: Tuple[Tensor], batch_idx: int):
       loss, encoded, decoded = self.__common_step(batch, batch_idx)
       self._log_dict({'train_loss': loss})
       return loss
   
-    def validation_step(self, batch, batch_idx):
+    def validation_step(self, batch: Tuple[Tensor], batch_idx: int):
       loss, encoded, decoded = self.__common_step(batch, batch_idx)
       self._log_dict({'valid_loss': loss})
       return loss
     
-    def test_step(self, batch, batch_idx):
+    def test_step(self, batch: Tuple[Tensor], batch_idx: int):
       loss, encoded, decoded = self.__common_step(batch, batch_idx)
       self._log_dict({'test_loss': loss})
       return loss

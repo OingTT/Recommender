@@ -86,16 +86,6 @@ class GHRSCalc(metaclass=Singleton):
       label = int(row['cluster_label'])
       self.databaseAdapter.updateUserClusteredByUserId(id=id, label=label)
 
-  def __train_autoencoder(
-      self,
-      autoencoder_trainer: pl.Trainer,
-      ghrs_datamodule: pl.LightningDataModule
-    ) -> AutoEncoder:
-    raise NotImplementedError('__train_autoencoder is not implemented yet')
-    autoencoder = AutoEncoder(CFG=self.CFG)
-    autoencoder_trainer.fit(autoencoder, datamodule=ghrs_datamodule)
-    return autoencoder_trainer.lightning_module
-  
   def __load_best_model(self) -> AutoEncoder:
     chkps = dict()
     pretrained_model_dir: str = self.CFG['pretrained_model_dir']
